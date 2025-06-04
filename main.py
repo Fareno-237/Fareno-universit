@@ -77,6 +77,7 @@ class Constraint(Base):
     day = Column(String(50))
     time = Column(Time)
     constraint_type = Column(String(50))
+    is_active = Column(Boolean, default=True)
 
 class Timetable(Base):
     __tablename__ = "timetable"
@@ -141,8 +142,51 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints existants (login, constraints, timetable, etc.) restent inchangés ici
-# Ajout des nouveaux endpoints pour les ressources
+# Endpoints existants (login, teachers, groups, rooms, timetable, etc.) restent inchangés ici
+# Ajout/Mise à jour des endpoints pour les contraintes
+
+@app.get("/api/constraints")
+async def get_constraints(db: Session = Depends(get_db)):
+    constraints = db.query(Constraint).filter(Constraint.is_active == True).all()
+    return [
+        {
+            "id": c.id,
+            "resource_type": c.resource_type,
+            "resource_id": c.resource_id,
+            "resource_name": c.resource_name,
+            "day": c.day,
+            "time": c.time.strftime("%H:%M"),
+            "constraint_type": c.constraint_type
+        }
+        for c in constraints
+    ]
+
+@app.post("/api/constraints")
+async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get_db)):
+    new_constraint = Constraint(**constraint.dict())
+    db.add(new_constraint)
+    db.commit()
+    db.refresh(new_constraint)
+    return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
+
+@app.put("/api/constraints/{constraint_id}")
+async def update_constraint(constraint_id: int, constraint: ConstraintCreate, db: Session = Depends(get_db)):
+    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
+    if not db_constraint:
+        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+    for key, value in constraint.dict().items():
+        setattr(db_constraint, key, value)
+    db.commit()
+    return {"message": "Contrainte mise à jour avec succès"}
+
+@app.delete("/api/constraints/{constraint_id}")
+async def delete_constraint(constraint_id: int, db: Session = Depends(get_db)):
+    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
+    if not db_constraint:
+        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+    db_constraint.is_active = False
+    db.commit()
+    return {"message": "Contrainte marquée comme supprimée avec succès"}
 
 @app.get("/api/teachers")
 async def get_teachers(db: Session = Depends(get_db)):
@@ -240,6 +284,44 @@ async def delete_room(room_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Salle marquée comme supprimée avec succès"}
 
+@app.get("/api/timetable")
+async def get_timetable(
+    search: Optional[str] = None,
+    group_id: Optional[int] = None,
+    teacher_id: Optional[int] = None,
+    date: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Timetable)
+    if group_id:
+        query = query.filter(Timetable.group_id == group_id)
+    if teacher_id:
+        query = query.filter(Timetable.teacher_id == teacher_id)
+    if date:
+        query = query.filter(Timetable.date == date)
+    timetable = query.all()
+    result = []
+    for t in timetable:
+        teacher = db.query(Teacher).filter(Teacher.id == t.teacher_id, Teacher.is_active == True).first()
+        room = db.query(Room).filter(Room.id == t.room_id, Room.is_active == True).first()
+        entry = {
+            "id": t.id,
+            "group_id": t.group_id,
+            "teacher_id": t.teacher_id,
+            "teacher_name": teacher.name if teacher else "",
+            "room_id": t.room_id,
+            "room_name": room.name if room else "",
+            "subject": t.subject,
+            "day": t.day,
+            "start_time": t.start_time.strftime("%H:%M"),
+            "end_time": t.end_time.strftime("%H:%M"),
+            "date": t.date.strftime("%Y-%m-%d")
+        }
+        if search and search.lower() not in (entry["subject"].lower(), entry["teacher_name"].lower(), entry["room_name"].lower()):
+            continue
+        result.append(entry)
+    return result
+
 @app.get("/api/timetable/dates")
 async def get_timetable_dates(db: Session = Depends(get_db)):
     dates = db.query(Timetable.date).distinct().all()
@@ -259,10 +341,10 @@ async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_
     ]
     subjects = ["Mathématiques", "Physique", "Chimie", "Biologie"]
 
-    # Récupérer les ressources
+    # Récupérer les ressources actives
     teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
     rooms = db.query(Room).filter(Room.is_active == True).all()
-    constraints = db.query(Constraint).filter(Constraint.resource_type == "teacher").all()
+    constraints = db.query(Constraint).filter(Constraint.is_active == True, Constraint.resource_type == "teacher").all()
 
     # Supprimer les anciens emplois du temps pour ce groupe et cette date
     db.query(Timetable).filter(Timetable.group_id == group_id, Timetable.date == date).delete()
@@ -335,22 +417,12 @@ async def export_timetable(
 async def get_stats(db: Session = Depends(get_db)):
     timetables_count = db.query(Timetable).count()
     active_users = db.query(User).filter(User.last_login >= datetime.datetime.now() - datetime.timedelta(days=30)).count()
-    conflicts_resolved = db.query(Constraint).filter(Constraint.constraint_type == "resolved").count()
+    conflicts_resolved = db.query(Constraint).filter(Constraint.constraint_type == "resolved", Constraint.is_active == True).count()
     return {
         "timetables_generated": timetables_count,
         "active_users": active_users,
         "conflicts_resolved": conflicts_resolved
     }
-
-@app.get("/api/groups")
-async def get_groups(db: Session = Depends(get_db)):
-    groups = db.query(Group).filter(Group.is_active == True).all()
-    return [{"id": g.id, "name": g.name} for g in groups]
-
-@app.get("/api/teachers")
-async def get_teachers(db: Session = Depends(get_db)):
-    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
-    return [{"id": t.id, "name": t.name} for t in teachers]
 
 # Créer les tables si elles n'existent pas
 Base.metadata.create_all(bind=engine)
@@ -399,6 +471,15 @@ def init_db():
             db.add_all(rooms)
             db.commit()
             print("Salles test ajoutées.")
+
+        if db.query(Constraint).count() == 0:
+            constraints = [
+                Constraint(resource_type="teacher", resource_id=1, resource_name="M. Dupont", day="lundi", time=datetime.time(8, 0), constraint_type="unavailable"),
+                Constraint(resource_type="teacher", resource_id=2, resource_name="Mme Lefèvre", day="mardi", time=datetime.time(14, 0), constraint_type="preference")
+            ]
+            db.add_all(constraints)
+            db.commit()
+            print("Contraintes test ajoutées.")
     finally:
         db.close()
 
