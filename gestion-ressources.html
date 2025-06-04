@@ -359,6 +359,7 @@
                     <thead>
                         <tr>
                             <th>Nom</th>
+                            <th>Email</th>
                             <th>Matières Enseignées</th>
                             <th>Disponibilités</th>
                             <th>Actions</th>
@@ -418,8 +419,13 @@
                     <form id="resource-form">
                         <input type="hidden" id="resource-id" name="id">
                         <input type="text" id="name" name="name" placeholder="Nom" required>
-                        <input type="text" id="extra1" name="extra1" placeholder="" required>
-                        <input type="text" id="extra2" name="extra2" placeholder="" required>
+                        <input type="email" id="email" name="email" placeholder="Email" required> <!-- Pour les enseignants -->
+                        <input type="text" id="subjects" name="subjects" placeholder="Matières Enseignées" required>
+                        <input type="text" id="availability" name="availability" placeholder="Disponibilités"> <!-- Pour les enseignants -->
+                        <input type="number" id="student_count" name="student_count" placeholder="Nombre d'Étudiants" required> <!-- Pour les groupes -->
+                        <input type="text" id="group_subjects" name="subjects" placeholder="Matières Suivies"> <!-- Pour les groupes -->
+                        <input type="number" id="capacity" name="capacity" placeholder="Capacité" required> <!-- Pour les salles -->
+                        <input type="text" id="equipment" name="equipment" placeholder="Équipements"> <!-- Pour les salles -->
                         <button type="submit">Enregistrer</button>
                         <button type="button" class="cancel" onclick="closeForm()">Annuler</button>
                     </form>
@@ -471,10 +477,11 @@
                         if (type === 'teachers') {
                             row.innerHTML = `
                                 <td>${item.name}</td>
+                                <td>${item.email}</td>
                                 <td>${item.subjects}</td>
-                                <td>${item.availability}</td>
+                                <td>${item.availability || 'N/A'}</td>
                                 <td>
-                                    <button class="edit-btn" onclick="openEditForm('teachers', ${item.id}, '${item.name}', '${item.subjects}', '${item.availability}')">Modifier</button>
+                                    <button class="edit-btn" onclick="openEditForm('teachers', ${item.id}, '${item.name}', '${item.email}', '${item.subjects}', '${item.availability}')">Modifier</button>
                                     <button class="delete-btn" onclick="deleteResource('teachers', ${item.id})">Supprimer</button>
                                 </td>
                             `;
@@ -492,7 +499,7 @@
                             row.innerHTML = `
                                 <td>${item.name}</td>
                                 <td>${item.capacity}</td>
-                                <td>${item.equipment}</td>
+                                <td>${item.equipment || 'N/A'}</td>
                                 <td>
                                     <button class="edit-btn" onclick="openEditForm('rooms', ${item.id}, '${item.name}', '${item.capacity}', '${item.equipment}')">Modifier</button>
                                     <button class="delete-btn" onclick="deleteResource('rooms', ${item.id})">Supprimer</button>
@@ -513,30 +520,18 @@
             const formOverlay = document.getElementById('form-overlay');
             const formTitle = document.getElementById('form-title');
             const form = document.getElementById('resource-form');
-            const extra1 = document.getElementById('extra1');
-            const extra2 = document.getElementById('extra2');
 
             formOverlay.style.display = 'flex';
             formTitle.textContent = `Ajouter un ${type === 'teachers' ? 'Enseignant' : type === 'groups' ? 'Groupe' : 'Salle'}`;
             document.getElementById('resource-id').value = '';
             document.getElementById('name').value = '';
-
-            if (type === 'teachers') {
-                extra1.placeholder = 'Matières Enseignées';
-                extra2.placeholder = 'Disponibilités';
-                extra1.value = '';
-                extra2.value = '';
-            } else if (type === 'groups') {
-                extra1.placeholder = 'Nombre d\'Étudiants';
-                extra2.placeholder = 'Matières Suivies';
-                extra1.value = '';
-                extra2.value = '';
-            } else if (type === 'rooms') {
-                extra1.placeholder = 'Capacité';
-                extra2.placeholder = 'Équipements';
-                extra1.value = '';
-                extra2.value = '';
-            }
+            document.getElementById('email').value = '';
+            document.getElementById('subjects').value = '';
+            document.getElementById('availability').value = '';
+            document.getElementById('student_count').value = '';
+            document.getElementById('group_subjects').value = '';
+            document.getElementById('capacity').value = '';
+            document.getElementById('equipment').value = '';
 
             form.onsubmit = (e) => {
                 e.preventDefault();
@@ -544,12 +539,10 @@
             };
         }
 
-        function openEditForm(type, id, name, extra1, extra2) {
+        function openEditForm(type, id, name, extra1, extra2, extra3, extra4) {
             const formOverlay = document.getElementById('form-overlay');
             const formTitle = document.getElementById('form-title');
             const form = document.getElementById('resource-form');
-            const extra1Input = document.getElementById('extra1');
-            const extra2Input = document.getElementById('extra2');
 
             formOverlay.style.display = 'flex';
             formTitle.textContent = `Modifier un ${type === 'teachers' ? 'Enseignant' : type === 'groups' ? 'Groupe' : 'Salle'}`;
@@ -557,20 +550,15 @@
             document.getElementById('name').value = name;
 
             if (type === 'teachers') {
-                extra1Input.placeholder = 'Matières Enseignées';
-                extra2Input.placeholder = 'Disponibilités';
-                extra1Input.value = extra1;
-                extra2Input.value = extra2;
+                document.getElementById('email').value = extra1;
+                document.getElementById('subjects').value = extra2;
+                document.getElementById('availability').value = extra3 || '';
             } else if (type === 'groups') {
-                extra1Input.placeholder = 'Nombre d\'Étudiants';
-                extra2Input.placeholder = 'Matières Suivies';
-                extra1Input.value = extra1;
-                extra2Input.value = extra2;
+                document.getElementById('student_count').value = extra1;
+                document.getElementById('group_subjects').value = extra2 || '';
             } else if (type === 'rooms') {
-                extra1Input.placeholder = 'Capacité';
-                extra2Input.placeholder = 'Équipements';
-                extra1Input.value = extra1;
-                extra2Input.value = extra2;
+                document.getElementById('capacity').value = extra1;
+                document.getElementById('equipment').value = extra2 || '';
             }
 
             form.onsubmit = (e) => {
@@ -582,27 +570,24 @@
         function saveResource(type) {
             const id = document.getElementById('resource-id').value;
             const name = document.getElementById('name').value;
-            const extra1 = document.getElementById('extra1').value;
-            const extra2 = document.getElementById('extra2').value;
+            const method = id ? 'PUT' : 'POST';
 
-            const data = { id, name };
+            let data = { id, name };
             if (type === 'teachers') {
-                data.subjects = extra1;
-                data.availability = extra2;
+                data.email = document.getElementById('email').value;
+                data.subjects = document.getElementById('subjects').value;
+                data.availability = document.getElementById('availability').value;
             } else if (type === 'groups') {
-                data.student_count = parseInt(extra1);
-                data.subjects = extra2;
+                data.student_count = parseInt(document.getElementById('student_count').value);
+                data.subjects = document.getElementById('group_subjects').value;
             } else if (type === 'rooms') {
-                data.capacity = parseInt(extra1);
-                data.equipment = extra2;
+                data.capacity = parseInt(document.getElementById('capacity').value);
+                data.equipment = document.getElementById('equipment').value;
             }
 
-            const method = id ? 'PUT' : 'POST';
             fetch(`/api/${type}`, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
                 .then(response => response.json())
@@ -618,7 +603,7 @@
         }
 
         function deleteResource(type, id) {
-            if (confirm(`Voulez-vous vraiment supprimer cet élément ?`)) {
+            if (confirm(`Voulez-vous vraiment supprimer cet ${type === 'teachers' ? 'enseignant' : type === 'groups' ? 'groupe' : 'salle'} ?`)) {
                 fetch(`/api/${type}/${id}`, {
                     method: 'DELETE'
                 })
