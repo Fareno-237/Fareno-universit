@@ -17,9 +17,14 @@ from datetime import datetime, time, timedelta
 import random
 from typing import List, Optional
 import os
+import logging
+
+# Configuration du logging pour capturer les erreurs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configuration
-DATABASE_URL = "postgresql://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abipnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db"
+DATABASE_URL = "postgresql+psycopg://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abibnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db?sslmode=require"
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -180,7 +185,6 @@ async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get
     db.add(new_constraint)
     db.commit()
     db.refresh(new_constraint)
-    # Ajouter un log
     add_log(db, user_id=1, user_name="admin", action="create_constraint", details=f"Ajout de contrainte ID {new_constraint.id}")
     return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
 
@@ -361,7 +365,6 @@ async def get_logs(db: Session = Depends(get_db)):
 @app.post("/api/adjustments")
 async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = Depends(get_db)):
     for adjustment in adjustments:
-        # Vérifier si la ressource existe dans les enseignants ou les groupes
         teacher = db.query(Teacher).filter(Teacher.name == adjustment.resource, Teacher.is_active == True).first()
         group = db.query(Group).filter(Group.name == adjustment.resource, Group.is_active == True).first()
 
@@ -372,7 +375,6 @@ async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = De
         resource_id = teacher.id if teacher else group.id
         resource_name = adjustment.resource
 
-        # Vérifier si une contrainte existe déjà
         existing_constraint = db.query(Constraint).filter(
             Constraint.resource_type == resource_type,
             Constraint.resource_id == resource_id,
@@ -382,12 +384,10 @@ async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = De
         ).first()
 
         if existing_constraint:
-            # Mettre à jour la contrainte existante
             existing_constraint.constraint_type = adjustment.new_value.lower()
             db.commit()
             add_log(db, user_id=1, user_name="admin", action="update_adjustment", details=f"Mise à jour de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
         else:
-            # Créer une nouvelle contrainte
             new_constraint = Constraint(
                 resource_type=resource_type,
                 resource_id=resource_id,
@@ -402,6 +402,17 @@ async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = De
             add_log(db, user_id=1, user_name="admin", action="create_adjustment", details=f"Création de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
 
     return {"message": "Ajustements appliqués avec succès"}
+
+# Nouvel endpoint pour exécuter les migrations
+@app.post("/api/migrate")
+async def run_migration(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE"))
+        db.commit()
+        return {"message": "Migration effectuée avec succès : colonne last_login ajoutée"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la migration : {str(e)}")
 
 # Endpoints existants (non modifiés pour le logging ici pour brevité)
 @app.get("/api/constraints")
@@ -589,9 +600,6 @@ async def get_stats(db: Session = Depends(get_db)):
         "conflicts_resolved": conflicts_resolved
     }
 
-# Créer les tables si elles n'existent pas
-Base.metadata.create_all(bind=engine)
-
 # Initialisation de la base de données avec un utilisateur admin et données de test
 def init_db():
     db = SessionLocal()
@@ -646,4 +654,15 @@ def init_db():
     finally:
         db.close()
 
-init_db()
+# Créer les tables si elles n'existent pas, avec gestion des erreurs
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logger.error(f"Erreur lors de la création des tables : {str(e)}")
+
+# Initialiser les données uniquement si l'environnement est en mode développement/test
+if os.getenv("ENVIRONMENT", "development") == "development":
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation des données : {str(e)}")
