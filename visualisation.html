@@ -165,6 +165,22 @@
             z-index: 1000;
         }
 
+        .loading-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #4CAF50;
+            display: none;
+        }
+
+        .no-data-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #ff4d4d;
+            display: none;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -250,9 +266,11 @@
                     <!-- Options chargées dynamiquement via JavaScript -->
                 </select>
                 <button class="action-btn" onclick="generateTimetable()">Actualiser/Générer</button>
-                <button class="action-btn export-btn" onclick="exportTimetable()">Exporter</button>
+                <button class="action-btn export-btn" onclick="exportTimetable()">Exporter (CSV)</button>
             </div>
-            <table class="timetable-table">
+            <div class="loading-message" id="loading-message">Chargement de l'emploi du temps...</div>
+            <div class="no-data-message" id="no-data-message">Aucun emploi du temps disponible pour ces filtres.</div>
+            <table class="timetable-table" id="timetable-table">
                 <thead>
                     <tr>
                         <th>Heure</th>
@@ -274,6 +292,18 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-message').style.display = show ? 'block' : 'none';
+            document.getElementById('timetable-table').style.display = show ? 'none' : 'table';
+            document.getElementById('no-data-message').style.display = 'none';
+        }
+
+        function showNoData(show) {
+            document.getElementById('no-data-message').style.display = show ? 'block' : 'none';
+            document.getElementById('timetable-table').style.display = show ? 'none' : 'table';
+            document.getElementById('loading-message').style.display = 'none';
         }
 
         function loadFilterOptions() {
@@ -335,6 +365,8 @@
             if (teacherId) params.append('teacher_id', teacherId);
             if (date) params.append('date', date);
 
+            showLoading(true);
+
             fetch(`/api/timetable?${params.toString()}`)
                 .then(response => response.json())
                 .then(data => {
@@ -348,6 +380,11 @@
                         { start: '14:00', end: '16:00' },
                         { start: '16:00', end: '18:00' }
                     ];
+
+                    if (data.length === 0) {
+                        showNoData(true);
+                        return;
+                    }
 
                     // Créer une ligne pour chaque créneau horaire
                     timeSlots.forEach(slot => {
@@ -370,10 +407,13 @@
 
                         tableBody.appendChild(row);
                     });
+
+                    showLoading(false);
                 })
                 .catch(error => {
                     console.error('Erreur lors du chargement de l\'emploi du temps:', error);
                     alert('Erreur lors du chargement de l\'emploi du temps');
+                    showLoading(false);
                 });
         }
 
@@ -386,6 +426,8 @@
                 return;
             }
 
+            showLoading(true);
+
             fetch('/api/timetable/generate', {
                 method: 'POST',
                 headers: {
@@ -397,10 +439,12 @@
                 .then(data => {
                     alert(data.message || data.error);
                     loadTimetable(); // Recharger l'emploi du temps
+                    showLoading(false);
                 })
                 .catch(error => {
                     console.error('Erreur lors de la génération de l\'emploi du temps:', error);
                     alert('Erreur lors de la génération');
+                    showLoading(false);
                 });
         }
 
@@ -414,8 +458,8 @@
             if (teacherId) params.append('teacher_id', teacherId);
             if (date) params.append('date', date);
 
-            // Ouvre un nouvel onglet pour télécharger le fichier
-            window.open(`/api/timetable/export?${params.toString()}`, '_blank');
+            // Exporter en CSV (seul format actuellement implémenté)
+            window.open(`/api/timetable/export/csv?${params.toString()}`, '_blank');
         }
 
         // Charger les données au démarrage
