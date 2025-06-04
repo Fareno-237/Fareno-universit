@@ -289,7 +289,6 @@
                 <div class="search-bar">
                     <input type="text" placeholder="Rechercher une contrainte..." onkeyup="filterConstraints()">
                 </div>
-               
             </div>
             <div class="constraint-form">
                 <form id="constraint-form">
@@ -472,7 +471,7 @@
 
             const [resourceType, resourceId] = resource.split(':');
             const data = {
-                id,
+                id: id || undefined,
                 resource_type: resourceType,
                 resource_id: parseInt(resourceId),
                 resource_name: document.getElementById('resource').selectedOptions[0].text,
@@ -482,11 +481,10 @@
             };
 
             const method = id ? 'PUT' : 'POST';
-            fetch('/api/constraints', {
+            const url = id ? `/api/constraints/${id}` : '/api/constraints';
+            fetch(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
                 .then(response => response.json())
@@ -523,6 +521,8 @@
             loadResources();
             loadConstraints();
             document.getElementById('constraint-form').addEventListener('submit', saveConstraint);
+            // Ajouter un événement pour ouvrir le formulaire d'ajout au clic sur un bouton (si tu veux un bouton "Ajouter")
+            // document.querySelector('.add-constraint-btn').addEventListener('click', openAddForm);
         });
     </script>
 </body>
