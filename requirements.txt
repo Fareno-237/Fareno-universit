@@ -1,7 +1,7 @@
-fastapi
-sqlalchemy
-pydantic
-passlib[bcrypt]
-psycopg2-binary
-uvicorn
-gunicorn
+fastapi==0.110.0
+sqlalchemy==2.0.29
+pydantic==2.7.1
+passlib[bcrypt]==1.7.4
+psycopg2-binary==2.9.9
+uvicorn==0.29.0
+gunicorn==21.2.0
