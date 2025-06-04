@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Connexion - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url('farenou.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+        }
+
+        .login-container {
+            background-color: rgba(42, 42, 42, 0.8);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.8);
+            animation: zoomIn 0.5s ease-out forwards;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: #4CAF50;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+            transition: background-color 0.3s;
+        }
+
+        input:focus {
+            background-color: #4a4a4a;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .login-btn:hover {
+            background-color: #45a049;
+        }
+
+        .forgot-password {
+            display: block;
+            margin-top: 1rem;
+            color: #4CAF50;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: #ff4d4d;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                padding: 1.5rem;
+                max-width: 90%;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            input, .login-btn {
+                font-size: 0.9rem;
+                padding: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Connexion à Fareno University</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur ou E-mail</label>
+                <input type="text" id="username" name="username" placeholder="Entrez votre identifiant" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" placeholder="Entrez votre mot de passe" required>
+            </div>
+            <button type="submit" class="login-btn">Se connecter</button>
+            <div class="error-message" id="error-message">Identifiants incorrects. Veuillez réessayer.</div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+
+            if ((username === 'admin' || username === 'admin@gmail.com') && password === 'fareno12') {
+                // Rediriger vers le tableau de bord (à créer)
+                window.location.href = 'dashboard.html';
+            } else {
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

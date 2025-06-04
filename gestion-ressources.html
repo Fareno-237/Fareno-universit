@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Gestion des Ressources - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 2rem 1rem;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+
+        .sidebar img {
+            width: 150px;
+            display: block;
+            margin: 0 auto 2rem auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .sidebar a.logout {
+            color: #ff4d4d;
+        }
+
+        .sidebar a.logout:hover {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            width: calc(100% - 250px);
+            background-color: rgba(30, 30, 30, 0.85);
+            min-height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            color: #ffffff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .tab.active {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .tab:hover {
+            background-color: #45a049;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-bar input {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            width: 250px;
+            outline: none;
+        }
+
+        .add-btn {
+            padding: 0.75rem 1.5rem;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+
+        .resource-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .resource-table th, .resource-table td {
+            padding: 1rem;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .resource-table th {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .resource-table td {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .resource-table button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .edit-btn {
+            background-color: #4CAF50;
+            color: #ffffff;
+            margin-right: 0.5rem;
+        }
+
+        .edit-btn:hover {
+            background-color: #45a049;
+        }
+
+        .delete-btn {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .delete-btn:hover {
+            background-color: #e04343;
+        }
+
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: #4CAF50;
+            border: none;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        .form-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .form-container {
+            background: #2a2a2a;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .form-container h2 {
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
+        .form-container input,
+        .form-container select {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+
+        .form-container button {
+            padding: 0.75rem 1.5rem;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .form-container button.cancel {
+            background-color: #ff4d4d;
+            margin-left: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1.5rem;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+
+            .actions {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-bar input {
+                width: 100%;
+            }
+
+            .resource-table th, .resource-table td {
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <nav class="sidebar" id="sidebar">
+            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
+            <a href="dashboard.html">Tableau de Bord</a>
+            <a href="gestion-ressources.html">Gestion des Ressources</a>
+            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
+            <a href="visualisation.html">Visualisation</a>
+            <a href="exportation.html">Exportation</a>
+            <a href="administration.html">Administration</a>
+            <a href="profil.html">Profil</a>
+            <a href="aide.html">Aide</a>
+            <a href="index.html" class="logout">Déconnexion</a>
+        </nav>
+        <main class="main-content">
+            <h1>Gestion des Ressources</h1>
+            <div class="tabs">
+                <div class="tab active" onclick="openTab('teachers')">Enseignants</div>
+                <div class="tab" onclick="openTab('groups')">Groupes</div>
+                <div class="tab" onclick="openTab('rooms')">Salles</div>
+            </div>
+            <div id="teachers" class="tab-content active">
+                <div class="actions">
+                    <div class="search-bar">
+                        <input type="text" placeholder="Rechercher un enseignant..." onkeyup="filterResources('teachers')">
+                    </div>
+                    <button class="add-btn" onclick="openAddForm('teachers')">Ajouter un Enseignant</button>
+                </div>
+                <table class="resource-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Matières Enseignées</th>
+                            <th>Disponibilités</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachers-table-body">
+                        <!-- Les données seront insérées dynamiquement via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="groups" class="tab-content">
+                <div class="actions">
+                    <div class="search-bar">
+                        <input type="text" placeholder="Rechercher un groupe..." onkeyup="filterResources('groups')">
+                    </div>
+                    <button class="add-btn" onclick="openAddForm('groups')">Ajouter un Groupe</button>
+                </div>
+                <table class="resource-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Nombre d'Étudiants</th>
+                            <th>Matières Suivies</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groups-table-body">
+                        <!-- Les données seront insérées dynamiquement via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="rooms" class="tab-content">
+                <div class="actions">
+                    <div class="search-bar">
+                        <input type="text" placeholder="Rechercher une salle..." onkeyup="filterResources('rooms')">
+                    </div>
+                    <button class="add-btn" onclick="openAddForm('rooms')">Ajouter une Salle</button>
+                </div>
+                <table class="resource-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Capacité</th>
+                            <th>Équipements</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rooms-table-body">
+                        <!-- Les données seront insérées dynamiquement via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Formulaire dynamique pour ajouter/modifier -->
+            <div id="form-overlay" class="form-overlay">
+                <div class="form-container">
+                    <h2 id="form-title"></h2>
+                    <form id="resource-form">
+                        <input type="hidden" id="resource-id" name="id">
+                        <input type="text" id="name" name="name" placeholder="Nom" required>
+                        <input type="text" id="extra1" name="extra1" placeholder="" required>
+                        <input type="text" id="extra2" name="extra2" placeholder="" required>
+                        <button type="submit">Enregistrer</button>
+                        <button type="button" class="cancel" onclick="closeForm()">Annuler</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function openTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            document.querySelector(`.tab[onclick="openTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            // Charger les données pour l'onglet actif
+            if (tabName === 'teachers') loadResources('teachers');
+            else if (tabName === 'groups') loadResources('groups');
+            else if (tabName === 'rooms') loadResources('rooms');
+        }
+
+        function filterResources(type) {
+            const input = document.querySelector(`#${type} .search-bar input`).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${type}-table-body tr`);
+
+            rows.forEach(row => {
+                const name = row.cells[0].textContent.toLowerCase();
+                row.style.display = name.includes(input) ? '' : 'none';
+            });
+        }
+
+        function loadResources(type) {
+            fetch(`/api/${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById(`${type}-table-body`);
+                    tableBody.innerHTML = '';
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        if (type === 'teachers') {
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>${item.subjects}</td>
+                                <td>${item.availability}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="openEditForm('teachers', ${item.id}, '${item.name}', '${item.subjects}', '${item.availability}')">Modifier</button>
+                                    <button class="delete-btn" onclick="deleteResource('teachers', ${item.id})">Supprimer</button>
+                                </td>
+                            `;
+                        } else if (type === 'groups') {
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>${item.student_count}</td>
+                                <td>${item.subjects}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="openEditForm('groups', ${item.id}, '${item.name}', '${item.student_count}', '${item.subjects}')">Modifier</button>
+                                    <button class="delete-btn" onclick="deleteResource('groups', ${item.id})">Supprimer</button>
+                                </td>
+                            `;
+                        } else if (type === 'rooms') {
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>${item.capacity}</td>
+                                <td>${item.equipment}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="openEditForm('rooms', ${item.id}, '${item.name}', '${item.capacity}', '${item.equipment}')">Modifier</button>
+                                    <button class="delete-btn" onclick="deleteResource('rooms', ${item.id})">Supprimer</button>
+                                </td>
+                            `;
+                        }
+                        tableBody.appendChild(row);
+                    });
+                    filterResources(type); // Appliquer le filtre initial
+                })
+                .catch(error => {
+                    console.error(`Erreur lors du chargement des ${type}:`, error);
+                    alert(`Erreur lors du chargement des ${type}`);
+                });
+        }
+
+        function openAddForm(type) {
+            const formOverlay = document.getElementById('form-overlay');
+            const formTitle = document.getElementById('form-title');
+            const form = document.getElementById('resource-form');
+            const extra1 = document.getElementById('extra1');
+            const extra2 = document.getElementById('extra2');
+
+            formOverlay.style.display = 'flex';
+            formTitle.textContent = `Ajouter un ${type === 'teachers' ? 'Enseignant' : type === 'groups' ? 'Groupe' : 'Salle'}`;
+            document.getElementById('resource-id').value = '';
+            document.getElementById('name').value = '';
+
+            if (type === 'teachers') {
+                extra1.placeholder = 'Matières Enseignées';
+                extra2.placeholder = 'Disponibilités';
+                extra1.value = '';
+                extra2.value = '';
+            } else if (type === 'groups') {
+                extra1.placeholder = 'Nombre d\'Étudiants';
+                extra2.placeholder = 'Matières Suivies';
+                extra1.value = '';
+                extra2.value = '';
+            } else if (type === 'rooms') {
+                extra1.placeholder = 'Capacité';
+                extra2.placeholder = 'Équipements';
+                extra1.value = '';
+                extra2.value = '';
+            }
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                saveResource(type);
+            };
+        }
+
+        function openEditForm(type, id, name, extra1, extra2) {
+            const formOverlay = document.getElementById('form-overlay');
+            const formTitle = document.getElementById('form-title');
+            const form = document.getElementById('resource-form');
+            const extra1Input = document.getElementById('extra1');
+            const extra2Input = document.getElementById('extra2');
+
+            formOverlay.style.display = 'flex';
+            formTitle.textContent = `Modifier un ${type === 'teachers' ? 'Enseignant' : type === 'groups' ? 'Groupe' : 'Salle'}`;
+            document.getElementById('resource-id').value = id;
+            document.getElementById('name').value = name;
+
+            if (type === 'teachers') {
+                extra1Input.placeholder = 'Matières Enseignées';
+                extra2Input.placeholder = 'Disponibilités';
+                extra1Input.value = extra1;
+                extra2Input.value = extra2;
+            } else if (type === 'groups') {
+                extra1Input.placeholder = 'Nombre d\'Étudiants';
+                extra2Input.placeholder = 'Matières Suivies';
+                extra1Input.value = extra1;
+                extra2Input.value = extra2;
+            } else if (type === 'rooms') {
+                extra1Input.placeholder = 'Capacité';
+                extra2Input.placeholder = 'Équipements';
+                extra1Input.value = extra1;
+                extra2Input.value = extra2;
+            }
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                saveResource(type);
+            };
+        }
+
+        function saveResource(type) {
+            const id = document.getElementById('resource-id').value;
+            const name = document.getElementById('name').value;
+            const extra1 = document.getElementById('extra1').value;
+            const extra2 = document.getElementById('extra2').value;
+
+            const data = { id, name };
+            if (type === 'teachers') {
+                data.subjects = extra1;
+                data.availability = extra2;
+            } else if (type === 'groups') {
+                data.student_count = parseInt(extra1);
+                data.subjects = extra2;
+            } else if (type === 'rooms') {
+                data.capacity = parseInt(extra1);
+                data.equipment = extra2;
+            }
+
+            const method = id ? 'PUT' : 'POST';
+            fetch(`/api/${type}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || data.error);
+                    closeForm();
+                    loadResources(type);
+                })
+                .catch(error => {
+                    console.error(`Erreur lors de l'enregistrement de ${type}:`, error);
+                    alert(`Erreur lors de l'enregistrement`);
+                });
+        }
+
+        function deleteResource(type, id) {
+            if (confirm(`Voulez-vous vraiment supprimer cet élément ?`)) {
+                fetch(`/api/${type}/${id}`, {
+                    method: 'DELETE'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message || data.error);
+                        loadResources(type);
+                    })
+                    .catch(error => {
+                        console.error(`Erreur lors de la suppression de ${type}:`, error);
+                        alert(`Erreur lors de la suppression`);
+                    });
+            }
+        }
+
+        function closeForm() {
+            document.getElementById('form-overlay').style.display = 'none';
+        }
+
+        // Charger les données au démarrage si l'onglet actif est sélectionné
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.querySelector('#teachers').classList.contains('active')) {
+                loadResources('teachers');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Tableau de Bord - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 2rem 1rem;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+
+        .sidebar img {
+            width: 150px;
+            display: block;
+            margin: 0 auto 2rem auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .sidebar a.logout {
+            color: #ff4d4d;
+        }
+
+        .sidebar a.logout:hover {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            width: calc(100% - 250px);
+            background-color: rgba(30, 30, 30, 0.85);
+            min-height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            flex-grow: 1;
+        }
+
+        .card {
+            background-color: #2a2a2a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+
+        .stats-section {
+            background-color: #2a2a2a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-top: auto;
+        }
+
+        .stats-section h2 {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-item {
+            background-color: #3a3a3a;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 1.1rem;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            font-size: 1.8rem;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: #4CAF50;
+            border: none;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1.5rem;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar img {
+                width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <nav class="sidebar" id="sidebar">
+            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
+          
+            <a href="gestion-ressources.html">Gestion des Ressources</a>
+            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
+            <a href="visualisation.html">Visualisation</a>
+            <a href="exportation.html">Exportation</a>
+            <a href="administration.html">Administration</a>
+            <a href="profil.html">Profil</a>
+            <a href="aide.html">Aide</a>
+            <a href="index.html" class="logout">Déconnexion</a>
+        </nav>
+        <main class="main-content">
+            <h1>Tableau de Bord</h1>
+            <div class="dashboard-grid">
+                <div class="card" onclick="window.location.href='gestion-utilisateurs.html'">
+                    <h3>Gestion des Utilisateurs</h3>
+                    <p>Créer, modifier ou supprimer des comptes utilisateurs.</p>
+                </div>
+                <div class="card" onclick="window.location.href='gestion-ressources.html'">
+                    <h3>Gestion des Ressources</h3>
+                    <p>Gérer enseignants, groupes et salles de classe.</p>
+                </div>
+                <div class="card" onclick="window.location.href='saisie-contraintes.html'">
+                    <h3>Saisie des Contraintes</h3>
+                    <p>Définir les contraintes pour la génération des emplois du temps.</p>
+                </div>
+                <div class="card" onclick="window.location.href='visualisation.html'">
+                    <h3>Visualisation</h3>
+                    <p>Consulter les emplois du temps générés.</p>
+                </div>
+                <div class="card" onclick="window.location.href='exportation.html'">
+                    <h3>Exportation</h3>
+                    <p>Exporter les emplois du temps en PDF, CSV ou calendrier.</p>
+                </div>
+            </div>
+            <div class="stats-section">
+                <h2>Statistiques Récentes</h2>
+                <div class="stats-grid" id="stats-grid">
+                    <!-- Les données seront insérées dynamiquement via JavaScript -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function loadStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const statsGrid = document.getElementById('stats-grid');
+                    statsGrid.innerHTML = `
+                        <div class="stat-item">
+                            <h3>Emplois du Temps Générés</h3>
+                            <p>${data.timetables_generated}</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>Utilisateurs Actifs</h3>
+                            <p>${data.active_users}</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>Conflits Résolus</h3>
+                            <p>${data.conflicts_resolved}</p>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des statistiques:', error);
+                    alert('Erreur lors du chargement des statistiques');
+                });
+        }
+
+        // Charger les données au démarrage
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+        });
+    </script>
+</body>
+</html>

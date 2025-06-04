@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Visualisation - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 2rem 1rem;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+
+        .sidebar img {
+            width: 150px;
+            display: block;
+            margin: 0 auto 2rem auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .sidebar a.logout {
+            color: #ff4d4d;
+        }
+
+        .sidebar a.logout:hover {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            width: calc(100% - 250px);
+            background-color: rgba(30, 30, 30, 0.85);
+            min-height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        .filters {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-bar input, .filters select {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+            width: 200px;
+        }
+
+        .action-btn {
+            padding: 0.75rem 1.5rem;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .action-btn:hover {
+            background-color: #45a049;
+        }
+
+        .export-btn {
+            background-color: #4CAF50;
+        }
+
+        .export-btn:hover {
+            background-color: #45a049;
+        }
+
+        .timetable-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .timetable-table th, .timetable-table td {
+            padding: 1rem;
+            text-align: left;
+            font-size: 1rem;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .timetable-table th {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: #4CAF50;
+            border: none;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1.5rem;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .filters {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-bar input, .filters select {
+                width: 100%;
+            }
+
+            .timetable-table th, .timetable-table td {
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <nav class="sidebar" id="sidebar">
+            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
+            <a href="dashboard.html">Tableau de Bord</a>
+            <a href="gestion-utilisateurs.html">Gestion des Utilisateurs</a>
+            <a href="gestion-ressources.html">Gestion des Ressources</a>
+            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
+            <a href="visualisation.html">Visualisation</a>
+            <a href="exportation.html">Exportation</a>
+            <a href="administration.html">Administration</a>
+            <a href="profil.html">Profil</a>
+            <a href="aide.html">Aide</a>
+            <a href="index.html" class="logout">Déconnexion</a>
+        </nav>
+        <main class="main-content">
+            <h1>Visualisation</h1>
+            <div class="filters">
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Rechercher un emploi du temps..." onkeyup="loadTimetable()">
+                </div>
+                <select id="group-filter" onchange="loadTimetable()">
+                    <option value="">Sélectionner un groupe</option>
+                    <!-- Options chargées dynamiquement via JavaScript -->
+                </select>
+                <select id="teacher-filter" onchange="loadTimetable()">
+                    <option value="">Sélectionner un enseignant</option>
+                    <!-- Options chargées dynamiquement via JavaScript -->
+                </select>
+                <select id="date-filter" onchange="loadTimetable()">
+                    <option value="">Sélectionner une date</option>
+                    <!-- Options chargées dynamiquement via JavaScript -->
+                </select>
+                <button class="action-btn" onclick="generateTimetable()">Actualiser/Générer</button>
+                <button class="action-btn export-btn" onclick="exportTimetable()">Exporter</button>
+            </div>
+            <table class="timetable-table">
+                <thead>
+                    <tr>
+                        <th>Heure</th>
+                        <th>Lundi</th>
+                        <th>Mardi</th>
+                        <th>Mercredi</th>
+                        <th>Jeudi</th>
+                        <th>Vendredi</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-table-body">
+                    <!-- Les données seront insérées dynamiquement via JavaScript -->
+                </tbody>
+            </table>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function loadFilterOptions() {
+            // Charger les groupes
+            fetch('/api/groups')
+                .then(response => response.json())
+                .then(data => {
+                    const groupSelect = document.getElementById('group-filter');
+                    groupSelect.innerHTML = '<option value="">Sélectionner un groupe</option>';
+                    data.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group.id;
+                        option.textContent = group.name;
+                        groupSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des groupes:', error));
+
+            // Charger les enseignants
+            fetch('/api/teachers')
+                .then(response => response.json())
+                .then(data => {
+                    const teacherSelect = document.getElementById('teacher-filter');
+                    teacherSelect.innerHTML = '<option value="">Sélectionner un enseignant</option>';
+                    data.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.id;
+                        option.textContent = teacher.name;
+                        teacherSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des enseignants:', error));
+
+            // Charger les dates
+            fetch('/api/timetable/dates')
+                .then(response => response.json())
+                .then(data => {
+                    const dateSelect = document.getElementById('date-filter');
+                    dateSelect.innerHTML = '<option value="">Sélectionner une date</option>';
+                    data.forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.textContent = date;
+                        dateSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des dates:', error));
+        }
+
+        function loadTimetable() {
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            const groupId = document.getElementById('group-filter').value;
+            const teacherId = document.getElementById('teacher-filter').value;
+            const date = document.getElementById('date-filter').value;
+
+            const params = new URLSearchParams();
+            if (searchInput) params.append('search', searchInput);
+            if (groupId) params.append('group_id', groupId);
+            if (teacherId) params.append('teacher_id', teacherId);
+            if (date) params.append('date', date);
+
+            fetch(`/api/timetable?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('timetable-table-body');
+                    tableBody.innerHTML = '';
+
+                    // Définir les créneaux horaires
+                    const timeSlots = [
+                        { start: '08:00', end: '10:00' },
+                        { start: '10:00', end: '12:00' },
+                        { start: '14:00', end: '16:00' },
+                        { start: '16:00', end: '18:00' }
+                    ];
+
+                    // Créer une ligne pour chaque créneau horaire
+                    timeSlots.forEach(slot => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${slot.start} - ${slot.end}</td>`;
+
+                        // Ajouter une cellule pour chaque jour (lundi à vendredi)
+                        ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'].forEach(day => {
+                            const session = data.find(s =>
+                                s.day.toLowerCase() === day &&
+                                s.start_time === slot.start &&
+                                s.end_time === slot.end
+                            );
+                            if (session) {
+                                row.innerHTML += `<td>${session.subject} (${session.teacher_name}, ${session.room_name})</td>`;
+                            } else {
+                                row.innerHTML += '<td>-</td>';
+                            }
+                        });
+
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement de l\'emploi du temps:', error);
+                    alert('Erreur lors du chargement de l\'emploi du temps');
+                });
+        }
+
+        function generateTimetable() {
+            const groupId = document.getElementById('group-filter').value;
+            const date = document.getElementById('date-filter').value;
+
+            if (!groupId || !date) {
+                alert('Veuillez sélectionner un groupe et une date pour générer l\'emploi du temps');
+                return;
+            }
+
+            fetch('/api/timetable/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ group_id: parseInt(groupId), date })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || data.error);
+                    loadTimetable(); // Recharger l'emploi du temps
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la génération de l\'emploi du temps:', error);
+                    alert('Erreur lors de la génération');
+                });
+        }
+
+        function exportTimetable() {
+            const groupId = document.getElementById('group-filter').value;
+            const teacherId = document.getElementById('teacher-filter').value;
+            const date = document.getElementById('date-filter').value;
+
+            const params = new URLSearchParams();
+            if (groupId) params.append('group_id', groupId);
+            if (teacherId) params.append('teacher_id', teacherId);
+            if (date) params.append('date', date);
+
+            // Ouvre un nouvel onglet pour télécharger le fichier
+            window.open(`/api/timetable/export?${params.toString()}`, '_blank');
+        }
+
+        // Charger les données au démarrage
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFilterOptions();
+            loadTimetable();
+        });
+    </script>
+</body>
+</html>

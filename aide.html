@@ -1,0 +1,352 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Aide - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg'); /* Remplacez par le chemin de votre image */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+          
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 2rem 1rem;
+            height: 100%;
+          
+            top: 0;
+            left: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+
+        .sidebar img {
+            width: 150px;
+            display: block;
+            margin: 0 auto 2rem auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .sidebar a.logout {
+            color: #ff4d4d;
+        }
+
+        .sidebar a.logout:hover {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            width: calc(100% - 250px);
+            background-color: rgba(30, 30, 30, 0.85);
+            min-height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        .search-bar {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-bar input {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+        }
+
+        .faq-section, .resources-section {
+            background-color: #2a2a2a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1.5rem;
+        }
+
+        .faq-section h2, .resources-section h2 {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
+        .faq-item {
+            margin-bottom: 1rem;
+        }
+
+        .faq-question {
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.75rem;
+            background-color: #3a3a3a;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .faq-question:hover {
+            background-color: #4CAF50;
+        }
+
+        .faq-answer {
+            display: none;
+            padding: 0.75rem;
+            font-size: 1rem;
+            background-color: #333333;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+        }
+
+        .faq-answer.active {
+            display: block;
+        }
+
+        .resources-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resources-section li {
+            margin-bottom: 0.5rem;
+        }
+
+        .resources-section a {
+            color: #4CAF50;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.3s;
+        }
+
+        .resources-section a:hover {
+            color: #45a049;
+        }
+
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: #4CAF50;
+            border: none;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1.5rem;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .faq-section, .resources-section {
+                padding: 1rem;
+            }
+
+            .faq-question, .faq-answer {
+                font-size: 0.9rem;
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <nav class="sidebar" id="sidebar">
+            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
+            <a href="dashboard.html">Tableau de Bord</a>
+            
+            <a href="gestion-ressources.html">Gestion des Ressources</a>
+            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
+            <a href="visualisation.html">Visualisation</a>
+            <a href="exportation.html">Exportation</a>
+            <a href="administration.html">Administration</a>
+            <a href="profil.html">Profil</a>
+            <a href="aide.html">Aide</a>
+            <a href="index.html" class="logout">Déconnexion</a>
+        </nav>
+        <main class="main-content">
+            <h1>Aide</h1>
+            <div class="search-bar">
+                <input type="text" placeholder="Rechercher dans l'aide..." onkeyup="filterHelp()">
+            </div>
+            <div class="faq-section">
+                <h2>Questions Fréquemment Posées (FAQ)</h2>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleAnswer(this)">Comment ajouter un nouvel utilisateur ?</div>
+                    <div class="faq-answer">Allez dans "Gestion des Utilisateurs", cliquez sur "Ajouter un Utilisateur", remplissez le formulaire et sauvegardez.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleAnswer(this)">Comment modifier un emploi du temps ?</div>
+                    <div class="faq-answer">Dans "Saisie des Contraintes", ajoutez ou modifiez les contraintes, puis générez un nouvel emploi du temps depuis "Visualisation".</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleAnswer(this)">Comment exporter un emploi du temps ?</div>
+                    <div class="faq-answer">Allez dans "Exportation", sélectionnez l'emploi du temps, choisissez un format (PDF, CSV, calendrier), et cliquez sur "Exporter".</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleAnswer(this)">Où puis-je voir mes dernières activités ?</div>
+                    <div class="faq-answer">Dans "Profil", consultez la section "Dernières Activités" pour voir vos actions récentes.</div>
+                </div>
+            </div>
+            <div class="resources-section">
+                <h2>Ressources Utiles</h2>
+                <ul>
+                    <li><a href="#">Télécharger le Manuel d'Utilisateur</a></li>
+                    <li><a href="#">Regarder le Tutoriel Vidéo</a></li>
+                    <li><a href="#">Contacter le Support Technique</a></li>
+                    <li><a href="#">Consulter la Documentation API</a></li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function toggleAnswer(element) {
+            const answer = element.nextElementSibling;
+            answer.classList.toggle('active');
+        }
+
+        function filterHelp() {
+            const input = document.querySelector('.search-bar input').value.toLowerCase();
+            const faqItems = document.querySelectorAll('.faq-item');
+            const resourceItems = document.querySelectorAll('.resources-section li');
+
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question').textContent.toLowerCase();
+                const answer = item.querySelector('.faq-answer').textContent.toLowerCase();
+                item.style.display = (question.includes(input) || answer.includes(input)) ? '' : 'none';
+            });
+
+            resourceItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(input) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

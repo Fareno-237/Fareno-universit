@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
+    <title>Saisie des Contraintes - Fareno University</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 2rem 1rem;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-250px);
+        }
+
+        .sidebar img {
+            width: 150px;
+            display: block;
+            margin: 0 auto 2rem auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .sidebar a.logout {
+            color: #ff4d4d;
+        }
+
+        .sidebar a.logout:hover {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            width: calc(100% - 250px);
+            background-color: rgba(30, 30, 30, 0.85);
+            min-height: 100vh;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-bar input {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            width: 250px;
+            outline: none;
+        }
+
+        .add-constraint-btn {
+            padding: 0.75rem 1.5rem;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-constraint-btn:hover {
+            background-color: #45a049;
+        }
+
+        .constraint-form {
+            background-color: #2a2a2a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .constraint-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .constraint-table th, .constraint-table td {
+            padding: 1rem;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .constraint-table th {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .constraint-table td {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .constraint-table button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .edit-btn {
+            background-color: #4CAF50;
+            color: #ffffff;
+            margin-right: 0.5rem;
+        }
+
+        .edit-btn:hover {
+            background-color: #45a049;
+        }
+
+        .delete-btn {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .delete-btn:hover {
+            background-color: #e04343;
+        }
+
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: #4CAF50;
+            border: none;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1.5rem;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .actions {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-bar input {
+                width: 100%;
+            }
+
+            .constraint-form {
+                padding: 1rem;
+            }
+
+            .constraint-table th, .constraint-table td {
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <nav class="sidebar" id="sidebar">
+            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
+            <a href="dashboard.html">Tableau de Bord</a>
+            <a href="gestion-ressources.html">Gestion des Ressources</a>
+            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
+            <a href="visualisation.html">Visualisation</a>
+            <a href="exportation.html">Exportation</a>
+            <a href="administration.html">Administration</a>
+            <a href="profil.html">Profil</a>
+            <a href="aide.html">Aide</a>
+            <a href="index.html" class="logout">Déconnexion</a>
+        </nav>
+        <main class="main-content">
+            <h1>Saisie des Contraintes</h1>
+            <div class="actions">
+                <div class="search-bar">
+                    <input type="text" placeholder="Rechercher une contrainte..." onkeyup="filterConstraints()">
+                </div>
+               
+            </div>
+            <div class="constraint-form">
+                <form id="constraint-form">
+                    <input type="hidden" id="constraint-id" name="id">
+                    <div class="form-group">
+                        <label for="resource">Ressource (Enseignant/Groupe/Salle)</label>
+                        <select id="resource" name="resource" required>
+                            <option value="">Sélectionner une ressource</option>
+                            <!-- Options chargées dynamiquement via JavaScript -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="day">Jour</label>
+                        <select id="day" name="day" required>
+                            <option value="">Sélectionner un jour</option>
+                            <option value="lundi">Lundi</option>
+                            <option value="mardi">Mardi</option>
+                            <option value="mercredi">Mercredi</option>
+                            <option value="jeudi">Jeudi</option>
+                            <option value="vendredi">Vendredi</option>
+                            <option value="samedi">Samedi</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="time">Heure</label>
+                        <input type="time" id="time" name="time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="constraint-type">Type de Contrainte</label>
+                        <select id="constraint-type" name="constraint_type" required>
+                            <option value="">Sélectionner un type</option>
+                            <option value="unavailable">Indisponible</option>
+                            <option value="preference">Préférence</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="add-constraint-btn">Enregistrer</button>
+                    <button type="button" class="delete-btn" onclick="clearForm()">Annuler</button>
+                </form>
+            </div>
+            <table class="constraint-table">
+                <thead>
+                    <tr>
+                        <th>Ressource</th>
+                        <th>Jour</th>
+                        <th>Heure</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="constraint-table-body">
+                    <!-- Les données seront insérées dynamiquement via JavaScript -->
+                </tbody>
+            </table>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function filterConstraints() {
+            const input = document.querySelector('.search-bar input').value.toLowerCase();
+            const rows = document.querySelectorAll('#constraint-table-body tr');
+
+            rows.forEach(row => {
+                const resource = row.cells[0].textContent.toLowerCase();
+                const day = row.cells[1].textContent.toLowerCase();
+                const time = row.cells[2].textContent.toLowerCase();
+                row.style.display = (resource.includes(input) || day.includes(input) || time.includes(input)) ? '' : 'none';
+            });
+        }
+
+        function loadResources() {
+            const resourceSelect = document.getElementById('resource');
+            resourceSelect.innerHTML = '<option value="">Sélectionner une ressource</option>';
+
+            // Charger les enseignants
+            fetch('/api/teachers')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = `teacher:${teacher.id}`;
+                        option.textContent = teacher.name;
+                        resourceSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des enseignants:', error));
+
+            // Charger les groupes
+            fetch('/api/groups')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = `group:${group.id}`;
+                        option.textContent = group.name;
+                        resourceSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des groupes:', error));
+
+            // Charger les salles
+            fetch('/api/rooms')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(room => {
+                        const option = document.createElement('option');
+                        option.value = `room:${room.id}`;
+                        option.textContent = room.name;
+                        resourceSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erreur lors du chargement des salles:', error));
+        }
+
+        function loadConstraints() {
+            fetch('/api/constraints')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('constraint-table-body');
+                    tableBody.innerHTML = '';
+                    data.forEach(constraint => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${constraint.resource_name}</td>
+                            <td>${constraint.day}</td>
+                            <td>${constraint.time}</td>
+                            <td>${constraint.constraint_type === 'unavailable' ? 'Indisponible' : 'Préférence'}</td>
+                            <td>
+                                <button class="edit-btn" onclick="openEditForm(${constraint.id}, '${constraint.resource_type}:${constraint.resource_id}', '${constraint.day}', '${constraint.time}', '${constraint.constraint_type}')">Modifier</button>
+                                <button class="delete-btn" onclick="deleteConstraint(${constraint.id})">Supprimer</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    filterConstraints(); // Appliquer le filtre initial
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des contraintes:', error);
+                    alert('Erreur lors du chargement des contraintes');
+                });
+        }
+
+        function openAddForm() {
+            document.getElementById('constraint-form').reset();
+            document.getElementById('constraint-id').value = '';
+            document.querySelector('#constraint-form button[type="submit"]').textContent = 'Ajouter';
+        }
+
+        function openEditForm(id, resource, day, time, constraintType) {
+            document.getElementById('constraint-id').value = id;
+            document.getElementById('resource').value = resource;
+            document.getElementById('day').value = day;
+            document.getElementById('time').value = time;
+            document.getElementById('constraint-type').value = constraintType;
+            document.querySelector('#constraint-form button[type="submit"]').textContent = 'Modifier';
+        }
+
+        function clearForm() {
+            document.getElementById('constraint-form').reset();
+            document.getElementById('constraint-id').value = '';
+            document.querySelector('#constraint-form button[type="submit"]').textContent = 'Ajouter';
+        }
+
+        function saveConstraint(e) {
+            e.preventDefault();
+            const id = document.getElementById('constraint-id').value;
+            const resource = document.getElementById('resource').value;
+            const day = document.getElementById('day').value;
+            const time = document.getElementById('time').value;
+            const constraintType = document.getElementById('constraint-type').value;
+
+            if (!resource || !day || !time || !constraintType) {
+                alert('Veuillez remplir tous les champs');
+                return;
+            }
+
+            const [resourceType, resourceId] = resource.split(':');
+            const data = {
+                id,
+                resource_type: resourceType,
+                resource_id: parseInt(resourceId),
+                resource_name: document.getElementById('resource').selectedOptions[0].text,
+                day,
+                time,
+                constraint_type: constraintType
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            fetch('/api/constraints', {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || data.error);
+                    clearForm();
+                    loadConstraints();
+                })
+                .catch(error => {
+                    console.error('Erreur lors de l\'enregistrement de la contrainte:', error);
+                    alert('Erreur lors de l\'enregistrement');
+                });
+        }
+
+        function deleteConstraint(id) {
+            if (confirm('Voulez-vous vraiment supprimer cette contrainte ?')) {
+                fetch(`/api/constraints/${id}`, {
+                    method: 'DELETE'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message || data.error);
+                        loadConstraints();
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la suppression de la contrainte:', error);
+                        alert('Erreur lors de la suppression');
+                    });
+            }
+        }
+
+        // Charger les données au démarrage
+        document.addEventListener('DOMContentLoaded', () => {
+            loadResources();
+            loadConstraints();
+            document.getElementById('constraint-form').addEventListener('submit', saveConstraint);
+        });
+    </script>
+</body>
+</html>
