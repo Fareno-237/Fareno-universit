@@ -142,6 +142,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .stat-item {
@@ -175,6 +176,29 @@
             border-radius: 5px;
             cursor: pointer;
             z-index: 1000;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #4CAF50;
+            display: none;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #ff4d4d;
+            display: none;
+        }
+
+        .chart-container {
+            background-color: #3a3a3a;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
         }
 
         @keyframes fadeIn {
@@ -230,7 +254,8 @@
         <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
         <nav class="sidebar" id="sidebar">
             <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
-          
+            <a href="dashboard.html">Tableau de Bord</a>
+            <a href="gestion-utilisateurs.html">Gestion des Utilisateurs</a>
             <a href="gestion-ressources.html">Gestion des Ressources</a>
             <a href="saisie-contraintes.html">Saisie des Contraintes</a>
             <a href="visualisation.html">Visualisation</a>
@@ -266,8 +291,14 @@
             </div>
             <div class="stats-section">
                 <h2>Statistiques Récentes</h2>
-                <div class="stats-grid" id="stats-grid">
+                <div class="loading-message" id="stats-loading-message">Chargement des statistiques...</div>
+                <div class="error-message" id="stats-error-message">Erreur lors du chargement des statistiques.</div>
+                <div class="stats-grid" id="stats-grid" style="display: none;">
                     <!-- Les données seront insérées dynamiquement via JavaScript -->
+                </div>
+                <div class="chart-container" id="stats-chart-container" style="display: none;">
+                    <h3>Vue Graphique des Statistiques</h3>
+                    <!-- Le graphique sera inséré ici -->
                 </div>
             </div>
         </main>
@@ -279,7 +310,30 @@
             sidebar.classList.toggle('active');
         }
 
+        function showStatsLoading(show) {
+            document.getElementById('stats-loading-message').style.display = show ? 'block' : 'none';
+            document.getElementById('stats-grid').style.display = 'none';
+            document.getElementById('stats-chart-container').style.display = 'none';
+            document.getElementById('stats-error-message').style.display = 'none';
+        }
+
+        function showStatsError(show) {
+            document.getElementById('stats-error-message').style.display = show ? 'block' : 'none';
+            document.getElementById('stats-grid').style.display = 'none';
+            document.getElementById('stats-chart-container').style.display = 'none';
+            document.getElementById('stats-loading-message').style.display = 'none';
+        }
+
+        function showStatsContent(show) {
+            document.getElementById('stats-grid').style.display = show ? 'grid' : 'none';
+            document.getElementById('stats-chart-container').style.display = show ? 'block' : 'none';
+            document.getElementById('stats-loading-message').style.display = 'none';
+            document.getElementById('stats-error-message').style.display = 'none';
+        }
+
         function loadStats() {
+            showStatsLoading(true);
+
             fetch('/api/stats')
                 .then(response => response.json())
                 .then(data => {
@@ -298,14 +352,70 @@
                             <p>${data.conflicts_resolved}</p>
                         </div>
                     `;
+
+                    // Ajouter le graphique
+                    const chartContainer = document.getElementById('stats-chart-container');
+                    const chartHTML = `
+                        <div id="stats-chart"></div>
+                        <script type="chartjs">
+                            {
+                                "type": "bar",
+                                "data": {
+                                    "labels": ["Emplois du Temps Générés", "Utilisateurs Actifs", "Conflits Résolus"],
+                                    "datasets": [{
+                                        "label": "Statistiques",
+                                        "data": [${data.timetables_generated}, ${data.active_users}, ${data.conflicts_resolved}],
+                                        "backgroundColor": ["#4CAF50", "#2196F3", "#FF9800"],
+                                        "borderColor": ["#388E3C", "#1976D2", "#F57C00"],
+                                        "borderWidth": 1
+                                    }]
+                                },
+                                "options": {
+                                    "scales": {
+                                        "y": {
+                                            "beginAtZero": true,
+                                            "title": {
+                                                "display": true,
+                                                "text": "Valeurs",
+                                                "color": "#ffffff"
+                                            },
+                                            "ticks": {
+                                                "color": "#cccccc"
+                                            },
+                                            "grid": {
+                                                "color": "#555555"
+                                            }
+                                        },
+                                        "x": {
+                                            "ticks": {
+                                                "color": "#cccccc"
+                                            },
+                                            "grid": {
+                                                "color": "#555555"
+                                            }
+                                        }
+                                    },
+                                    "plugins": {
+                                        "legend": {
+                                            "labels": {
+                                                "color": "#ffffff"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        </script>
+                    `;
+                    chartContainer.innerHTML = chartHTML;
+
+                    showStatsContent(true);
                 })
                 .catch(error => {
                     console.error('Erreur lors du chargement des statistiques:', error);
-                    alert('Erreur lors du chargement des statistiques');
+                    showStatsError(true);
                 });
         }
 
-        // Charger les données au démarrage
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
         });
