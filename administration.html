@@ -203,331 +203,20 @@
             z-index: 1000;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-250px);
-            }
-
-            .sidebar.active {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-                width: 100%;
-                padding: 1.5rem;
-            }
-
-            .menu-toggle {
-                display: block;
-            }
-
-            h1 {
-                font-size: 1.8rem;
-            }
-
-            .tabs {
-                flex-direction: column;
-            }
-
-            .tab {
-                padding: 0.5rem 1rem;
-                font-size: 1rem;
-            }
-
-            .actions {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .search-bar input {
-                width: 100%;
-            }
-
-            .log-table th, .log-table td, .adjustment-form th, .adjustment-form td {
-                font-size: 0.9rem;
-                padding: 0.75rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
-        <nav class="sidebar" id="sidebar">
-            <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
-            <a href="dashboard.html">Tableau de Bord</a>
-           
-            <a href="gestion-ressources.html">Gestion des Ressources</a>
-            <a href="saisie-contraintes.html">Saisie des Contraintes</a>
-            <a href="visualisation.html">Visualisation</a>
-            <a href="exportation.html">Exportation</a>
-            <a href="administration.html">Administration</a>
-            <a href="profil.html">Profil</a>
-            <a href="aide.html">Aide</a>
-            <a href="index.html" class="logout">Déconnexion</a>
-        </nav>
-        <main class="main-content">
-            <h1>Administration</h1>
-            <div class="tabs">
-                <div class="tab active" onclick="openTab('logs')">Logs</div>
-                <div class="tab" onclick="openTab('adjustments')">Ajustements Manuels</div>
-            </div>
-            <div id="logs" class="tab-content active">
-                <div class="actions">
-                    <div class="search-bar">
-                        <input type="text" placeholder="Rechercher dans les logs..." onkeyup="filterLogs()">
-                    </div>
-                </div>
-                <div class="log-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Utilisateur</th>
-                                <th>Action</th>
-                                <th>Détails</th>
-                            </tr>
-                        </thead>
-                        <tbody id="log-table-body">
-                            <!-- Les logs seront insérés dynamiquement via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div id="adjustments" class="tab-content">
-                <div class="actions">
-                    <div class="search-bar">
-                        <input type="text" placeholder="Rechercher un ajustement..." onkeyup="filterAdjustments()">
-                    </div>
-                    <button class="apply-btn" onclick="saveAdjustments()">Appliquer Ajustements</button>
-                </div>
-                <div class="adjustment-form">
-                    <form id="adjustment-form">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Ressource</th>
-                                    <th>Jour</th>
-                                    <th
-
-System: It looks like the response was cut off, possibly due to a length limitation or an interruption. I'll complete the response by providing the fully modified `administration.html` with the necessary JavaScript to connect to the backend endpoints for logs and adjustments, as you requested. I'll ensure all files remain at the root and focus solely on this file, as per your instructions.
-
-<xaiArtifact artifact_id="a8e6b9f3-a865-41e1-a3d8-89c325de6380" artifact_version_id="be4e14c2-ed4b-4a4b-a6a9-a69cad755b5b" title="administration.html" contentType="text/html">
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="FARENOUNIVERSITY.jpg" type="image/x-icon">
-    <title>Administration - Fareno University</title>
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            background-image: url('75ca7cbd-47b3-44e2-bc28-0a529f4c5af6.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            color: #ffffff;
-            overflow-x: hidden;
-        }
-
-        .container {
-            display: flex;
-            height: 100%;
-            width: 100%;
-        }
-
-        .sidebar {
-            width: 250px;
-            background-color: rgba(30, 30, 30, 0.95);
-            padding: 2rem 1rem;
-            height: 100%;
-            top: 0;
-            left: 0;
-            transform: translateX(0);
-            transition: transform 0.3s ease;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .sidebar.hidden {
-            transform: translateX(-250px);
-        }
-
-        .sidebar img {
-            width: 150px;
-            display: block;
-            margin: 0 auto 2rem auto;
-        }
-
-        .sidebar a {
-            display: block;
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 1.1rem;
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            border-radius: 5px;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .sidebar a:hover {
-            background-color: #4CAF50;
-            color: #ffffff;
-        }
-
-        .sidebar a.logout {
-            color: #ff4d4d;
-        }
-
-        .sidebar a.logout:hover {
-            background-color: #ff4d4d;
-            color: #ffffff;
-        }
-
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-            width: calc(100% - 250px);
-            background-color: rgba(30, 30, 30, 0.85);
-            min-height: 100vh;
-            opacity: 0;
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            color: #4CAF50;
-            margin-bottom: 1.5rem;
-            font-weight: bold;
-        }
-
-        .tabs {
-            display: flex;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid #4CAF50;
-        }
-
-        .tab {
-            padding: 0.75rem 1.5rem;
-            font-size: 1.1rem;
-            color: #ffffff;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .tab.active {
-            background-color: #4CAF50;
-            color: #ffffff;
-        }
-
-        .tab:hover {
-            background-color: #45a049;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .actions {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-
-        .search-bar input {
-            padding: 0.75rem;
-            border: none;
-            border-radius: 5px;
-            background-color: #3a3a3a;
-            color: #ffffff;
-            font-size: 1rem;
-            width: 250px;
-            outline: none;
-        }
-
-        .apply-btn {
-            padding: 0.75rem 1.5rem;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            color: #ffffff;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .apply-btn:hover {
-            background-color: #45a049;
-        }
-
-        .log-table, .adjustment-form {
-            background-color: #2a2a2a;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
-
-        .log-table table, .adjustment-form table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .log-table th, .log-table td, .adjustment-form th, .adjustment-form td {
+        .loading-message {
+            text-align: center;
             padding: 1rem;
-            text-align: left;
             font-size: 1rem;
-        }
-
-        .log-table th, .adjustment-form th {
-            background-color: #4CAF50;
-            color: #ffffff;
-        }
-
-        .log-table td, .adjustment-form td {
-            border-bottom: 1px solid #3a3a3a;
-        }
-
-        .adjustment-form input, .adjustment-form select {
-            width: 100%;
-            padding: 0.75rem;
-            border: none;
-            border-radius: 5px;
-            background-color: #3a3a3a;
-            color: #ffffff;
-            font-size: 1rem;
-            outline: none;
-        }
-
-        .menu-toggle {
+            color: #4CAF50;
             display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            background-color: #4CAF50;
-            border: none;
-            color: #ffffff;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 1000;
+        }
+
+        .no-data-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #ff4d4d;
+            display: none;
         }
 
         @keyframes fadeIn {
@@ -617,7 +306,9 @@ System: It looks like the response was cut off, possibly due to a length limitat
                         <input type="text" placeholder="Rechercher dans les logs..." onkeyup="filterLogs()">
                     </div>
                 </div>
-                <div class="log-table">
+                <div class="loading-message" id="logs-loading-message">Chargement des logs...</div>
+                <div class="no-data-message" id="logs-no-data-message">Aucun log disponible.</div>
+                <div class="log-table" id="log-table">
                     <table>
                         <thead>
                             <tr>
@@ -653,7 +344,7 @@ System: It looks like the response was cut off, possibly due to a length limitat
                             </thead>
                             <tbody id="adjustment-table-body">
                                 <tr>
-                                    <td><input type="text" name="resource" value="Marie Curie"></td>
+                                    <td><input type="text" name="resource" value="Mme Lefèvre"></td>
                                     <td><select name="day">
                                         <option value="lundi">Lundi</option>
                                         <option value="mardi">Mardi</option>
@@ -668,9 +359,9 @@ System: It looks like the response was cut off, possibly due to a length limitat
                                     <td><input type="text" name="resource" value="Groupe A"></td>
                                     <td><select name="day">
                                         <option value="mercredi">Mercredi</option>
-                                        <option value="jeudi">Jeudi</option>
                                         <option value="lundi">Lundi</option>
                                         <option value="mardi">Mardi</option>
+                                        <option value="jeudi">Jeudi</option>
                                         <option value="vendredi">Vendredi</option>
                                     </select></td>
                                     <td><input type="time" name="time" value="14:00"></td>
@@ -705,6 +396,18 @@ System: It looks like the response was cut off, possibly due to a length limitat
             }
         }
 
+        function showLogsLoading(show) {
+            document.getElementById('logs-loading-message').style.display = show ? 'block' : 'none';
+            document.getElementById('log-table').style.display = show ? 'none' : 'block';
+            document.getElementById('logs-no-data-message').style.display = 'none';
+        }
+
+        function showNoLogsData(show) {
+            document.getElementById('logs-no-data-message').style.display = show ? 'block' : 'none';
+            document.getElementById('log-table').style.display = show ? 'none' : 'block';
+            document.getElementById('logs-loading-message').style.display = 'none';
+        }
+
         function filterLogs() {
             const input = document.querySelector('#logs .search-bar input').value.toLowerCase();
             const rows = document.querySelectorAll('#log-table-body tr');
@@ -726,11 +429,19 @@ System: It looks like the response was cut off, possibly due to a length limitat
         }
 
         function loadLogs() {
+            showLogsLoading(true);
+
             fetch('/api/logs')
                 .then(response => response.json())
                 .then(data => {
                     const logTableBody = document.getElementById('log-table-body');
                     logTableBody.innerHTML = '';
+
+                    if (data.length === 0) {
+                        showNoLogsData(true);
+                        return;
+                    }
+
                     data.forEach(log => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
@@ -741,11 +452,14 @@ System: It looks like the response was cut off, possibly due to a length limitat
                         `;
                         logTableBody.appendChild(row);
                     });
-                    filterLogs(); // Appliquer le filtre initial
+
+                    showLogsLoading(false);
+                    filterLogs();
                 })
                 .catch(error => {
                     console.error('Erreur lors du chargement des logs:', error);
                     alert('Erreur lors du chargement des logs');
+                    showLogsLoading(false);
                 });
         }
 
@@ -754,13 +468,29 @@ System: It looks like the response was cut off, possibly due to a length limitat
             const rows = form.querySelectorAll('tbody tr');
             const adjustments = [];
 
-            rows.forEach(row => {
-                const resource = row.querySelector('input[name="resource"]').value;
+            for (const row of rows) {
+                const resource = row.querySelector('input[name="resource"]').value.trim();
                 const day = row.querySelector('select[name="day"]').value;
                 const time = row.querySelector('input[name="time"]').value;
-                const new_value = row.querySelector('input[name="new_value"]').value;
+                const new_value = row.querySelector('input[name="new_value"]').value.trim();
+
+                if (!resource || !day || !time || !new_value) {
+                    alert('Veuillez remplir tous les champs pour chaque ajustement.');
+                    return;
+                }
+
+                if (!["disponible", "préférence", "indisponible"].includes(new_value.toLowerCase())) {
+                    alert('La nouvelle valeur doit être "Disponible", "Préférence", ou "Indisponible".');
+                    return;
+                }
+
                 adjustments.push({ resource, day, time, new_value });
-            });
+            }
+
+            if (adjustments.length === 0) {
+                alert('Aucun ajustement à appliquer.');
+                return;
+            }
 
             fetch('/api/adjustments', {
                 method: 'POST',
@@ -779,7 +509,6 @@ System: It looks like the response was cut off, possibly due to a length limitat
                 });
         }
 
-        // Charger les logs au démarrage si l'onglet Logs est actif
         document.addEventListener('DOMContentLoaded', () => {
             if (document.querySelector('#logs').classList.contains('active')) {
                 loadLogs();
