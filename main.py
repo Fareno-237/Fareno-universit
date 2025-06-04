@@ -15,7 +15,7 @@ from typing import List, Optional
 import os
 
 # Configuration
-DATABASE_URL = "postgresql://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abipnbc738ed7g0-a.oregon-postgres.render.com/fareno12"
+DATABASE_URL = "postgresql://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abipnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db"
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
