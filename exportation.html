@@ -88,6 +88,12 @@
             font-weight: bold;
         }
 
+        h2 {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
         .filters {
             display: flex;
             justify-content: space-between;
@@ -171,6 +177,22 @@
             z-index: 1000;
         }
 
+        .loading-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #4CAF50;
+            display: none;
+        }
+
+        .no-data-message {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #ff4d4d;
+            display: none;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -232,7 +254,6 @@
         <nav class="sidebar" id="sidebar">
             <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
             <a href="dashboard.html">Tableau de Bord</a>
-      
             <a href="gestion-ressources.html">Gestion des Ressources</a>
             <a href="saisie-contraintes.html">Saisie des Contraintes</a>
             <a href="visualisation.html">Visualisation</a>
@@ -266,9 +287,11 @@
                 <button class="export-btn" id="export-csv" onclick="exportTimetable('csv')">Exporter en CSV</button>
                 <button class="export-btn" id="export-ical" onclick="exportTimetable('ical')">Exporter en Calendrier</button>
             </div>
+            <div class="loading-message" id="loading-message">Chargement de l'emploi du temps...</div>
+            <div class="no-data-message" id="no-data-message">Aucun emploi du temps disponible pour ces filtres.</div>
             <div class="timetable-preview">
                 <h2>Aperçu de l'Emploi du Temps</h2>
-                <table class="timetable-table">
+                <table class="timetable-table" id="timetable-table">
                     <thead>
                         <tr>
                             <th>Heure</th>
@@ -288,9 +311,23 @@
     </div>
 
     <script>
+        let timetableData = []; // Stocker les données de l'emploi du temps
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-message').style.display = show ? 'block' : 'none';
+            document.getElementById('timetable-table').style.display = show ? 'none' : 'table';
+            document.getElementById('no-data-message').style.display = 'none';
+        }
+
+        function showNoData(show) {
+            document.getElementById('no-data-message').style.display = show ? 'block' : 'none';
+            document.getElementById('timetable-table').style.display = show ? 'none' : 'table';
+            document.getElementById('loading-message').style.display = 'none';
         }
 
         function loadFilterOptions() {
@@ -352,9 +389,12 @@
             if (teacherId) params.append('teacher_id', teacherId);
             if (date) params.append('date', date);
 
+            showLoading(true);
+
             fetch(`/api/timetable?${params.toString()}`)
                 .then(response => response.json())
                 .then(data => {
+                    timetableData = data; // Stocker les données pour l'exportation
                     const tableBody = document.getElementById('timetable-table-body');
                     tableBody.innerHTML = '';
 
@@ -365,6 +405,11 @@
                         { start: '14:00', end: '16:00' },
                         { start: '16:00', end: '18:00' }
                     ];
+
+                    if (data.length === 0) {
+                        showNoData(true);
+                        return;
+                    }
 
                     // Créer une ligne pour chaque créneau horaire
                     timeSlots.forEach(slot => {
@@ -387,10 +432,13 @@
 
                         tableBody.appendChild(row);
                     });
+
+                    showLoading(false);
                 })
                 .catch(error => {
                     console.error('Erreur lors du chargement de l\'emploi du temps:', error);
                     alert('Erreur lors du chargement de l\'emploi du temps');
+                    showLoading(false);
                 });
         }
 
@@ -398,6 +446,16 @@
             const groupId = document.getElementById('group-filter').value;
             const teacherId = document.getElementById('teacher-filter').value;
             const date = document.getElementById('date-filter').value;
+
+            if (!groupId || !date) {
+                alert('Veuillez sélectionner un groupe et une date avant d\'exporter.');
+                return;
+            }
+
+            if (timetableData.length === 0) {
+                alert('Aucun emploi du temps disponible pour ces filtres. Veuillez vérifier vos sélections.');
+                return;
+            }
 
             const params = new URLSearchParams();
             if (groupId) params.append('group_id', groupId);
