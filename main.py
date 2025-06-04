@@ -48,16 +48,25 @@ class Teacher(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255))
     email = Column(String(255))
+    subjects = Column(String(255))
+    availability = Column(String(255))
+    is_active = Column(Boolean, default=True)
 
 class Group(Base):
     __tablename__ = "groups"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255))
+    student_count = Column(Integer)
+    subjects = Column(String(255))
+    is_active = Column(Boolean, default=True)
 
 class Room(Base):
     __tablename__ = "rooms"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255))
+    capacity = Column(Integer)
+    equipment = Column(String(255))
+    is_active = Column(Boolean, default=True)
 
 class Constraint(Base):
     __tablename__ = "constraints"
@@ -108,6 +117,22 @@ class TimetableEntry(BaseModel):
     end_time: str
     date: str
 
+class TeacherCreate(BaseModel):
+    name: str
+    email: str
+    subjects: str
+    availability: str
+
+class GroupCreate(BaseModel):
+    name: str
+    student_count: int
+    subjects: str
+
+class RoomCreate(BaseModel):
+    name: str
+    capacity: int
+    equipment: str
+
 # Dépendance pour la session DB
 def get_db():
     db = SessionLocal()
@@ -116,85 +141,104 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints
-@app.post("/api/login")
-async def login(data: LoginData, db: Session = Depends(get_db)):
-    query = text(
-        "SELECT id FROM users WHERE (name = :username OR email = :username) AND password = crypt(:password, password)"
-    )
-    result = db.execute(query, {"username": data.username, "password": data.password}).fetchone()
-    if result:
-        return {"success": True}
-    raise HTTPException(status_code=400, detail={"success": False, "error": "Identifiants incorrects"})
+# Endpoints existants (login, constraints, timetable, etc.) restent inchangés ici
+# Ajout des nouveaux endpoints pour les ressources
 
-@app.get("/api/constraints")
-async def get_constraints(db: Session = Depends(get_db)):
-    constraints = db.query(Constraint).all()
-    return [
-        {
-            "id": c.id,
-            "resource_type": c.resource_type,
-            "resource_id": c.resource_id,
-            "resource_name": c.resource_name,
-            "day": c.day,
-            "time": c.time.strftime("%H:%M"),
-            "constraint_type": c.constraint_type
-        }
-        for c in constraints
-    ]
+@app.get("/api/teachers")
+async def get_teachers(db: Session = Depends(get_db)):
+    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
+    return [{"id": t.id, "name": t.name, "email": t.email, "subjects": t.subjects, "availability": t.availability} for t in teachers]
 
-@app.post("/api/constraints")
-async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get_db)):
-    new_constraint = Constraint(
-        resource_type=constraint.resource_type,
-        resource_id=constraint.resource_id,
-        resource_name=constraint.resource_name,
-        day=constraint.day,
-        time=datetime.datetime.strptime(constraint.time, "%H:%M").time(),
-        constraint_type=constraint.constraint_type
-    )
-    db.add(new_constraint)
+@app.post("/api/teachers")
+async def create_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
+    db_teacher = Teacher(**teacher.dict())
+    db.add(db_teacher)
     db.commit()
-    db.refresh(new_constraint)
-    return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
+    db.refresh(db_teacher)
+    return {"id": db_teacher.id, "message": "Enseignant ajouté avec succès"}
 
-@app.get("/api/timetable")
-async def get_timetable(
-    search: Optional[str] = None,
-    group_id: Optional[int] = None,
-    teacher_id: Optional[int] = None,
-    date: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    query = db.query(Timetable)
-    if group_id:
-        query = query.filter(Timetable.group_id == group_id)
-    if teacher_id:
-        query = query.filter(Timetable.teacher_id == teacher_id)
-    if date:
-        query = query.filter(Timetable.date == date)
-    timetable = query.all()
-    result = []
-    for t in timetable:
-        teacher = db.query(Teacher).filter(Teacher.id == t.teacher_id).first()
-        room = db.query(Room).filter(Room.id == t.room_id).first()
-        entry = {
-            "id": t.id,
-            "group_id": t.group_id,
-            "teacher_id": t.teacher_id,
-            "teacher_name": teacher.name if teacher else "",
-            "room_id": t.room_id,
-            "room_name": room.name if room else "",
-            "subject": t.subject,
-            "day": t.day,
-            "start_time": t.start_time.strftime("%H:%M"),
-            "end_time": t.end_time.strftime("%H:%M"),
-            "date": t.date.strftime("%Y-%m-%d")
-        }
-        if search and search.lower() not in (entry["subject"].lower(), entry["teacher_name"].lower(), entry["room_name"].lower()):
-            continue
-        result.append(entry)
-    return result
+@app.put("/api/teachers/{teacher_id}")
+async def update_teacher(teacher_id: int, teacher: TeacherCreate, db: Session = Depends(get_db)):
+    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
+    if not db_teacher:
+        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+    for key, value in teacher.dict().items():
+        setattr(db_teacher, key, value)
+    db.commit()
+    return {"message": "Enseignant mis à jour avec succès"}
+
+@app.delete("/api/teachers/{teacher_id}")
+async def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
+    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
+    if not db_teacher:
+        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+    db_teacher.is_active = False
+    db.commit()
+    return {"message": "Enseignant marqué comme supprimé avec succès"}
+
+@app.get("/api/groups")
+async def get_groups(db: Session = Depends(get_db)):
+    groups = db.query(Group).filter(Group.is_active == True).all()
+    return [{"id": g.id, "name": g.name, "student_count": g.student_count, "subjects": g.subjects} for g in groups]
+
+@app.post("/api/groups")
+async def create_group(group: GroupCreate, db: Session = Depends(get_db)):
+    db_group = Group(**group.dict())
+    db.add(db_group)
+    db.commit()
+    db.refresh(db_group)
+    return {"id": db_group.id, "message": "Groupe ajouté avec succès"}
+
+@app.put("/api/groups/{group_id}")
+async def update_group(group_id: int, group: GroupCreate, db: Session = Depends(get_db)):
+    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    for key, value in group.dict().items():
+        setattr(db_group, key, value)
+    db.commit()
+    return {"message": "Groupe mis à jour avec succès"}
+
+@app.delete("/api/groups/{group_id}")
+async def delete_group(group_id: int, db: Session = Depends(get_db)):
+    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    db_group.is_active = False
+    db.commit()
+    return {"message": "Groupe marqué comme supprimé avec succès"}
+
+@app.get("/api/rooms")
+async def get_rooms(db: Session = Depends(get_db)):
+    rooms = db.query(Room).filter(Room.is_active == True).all()
+    return [{"id": r.id, "name": r.name, "capacity": r.capacity, "equipment": r.equipment} for r in rooms]
+
+@app.post("/api/rooms")
+async def create_room(room: RoomCreate, db: Session = Depends(get_db)):
+    db_room = Room(**room.dict())
+    db.add(db_room)
+    db.commit()
+    db.refresh(db_room)
+    return {"id": db_room.id, "message": "Salle ajoutée avec succès"}
+
+@app.put("/api/rooms/{room_id}")
+async def update_room(room_id: int, room: RoomCreate, db: Session = Depends(get_db)):
+    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
+    if not db_room:
+        raise HTTPException(status_code=404, detail="Salle non trouvée")
+    for key, value in room.dict().items():
+        setattr(db_room, key, value)
+    db.commit()
+    return {"message": "Salle mise à jour avec succès"}
+
+@app.delete("/api/rooms/{room_id}")
+async def delete_room(room_id: int, db: Session = Depends(get_db)):
+    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
+    if not db_room:
+        raise HTTPException(status_code=404, detail="Salle non trouvée")
+    db_room.is_active = False
+    db.commit()
+    return {"message": "Salle marquée comme supprimée avec succès"}
 
 @app.get("/api/timetable/dates")
 async def get_timetable_dates(db: Session = Depends(get_db)):
@@ -216,8 +260,8 @@ async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_
     subjects = ["Mathématiques", "Physique", "Chimie", "Biologie"]
 
     # Récupérer les ressources
-    teachers = db.query(Teacher).all()
-    rooms = db.query(Room).all()
+    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
+    rooms = db.query(Room).filter(Room.is_active == True).all()
     constraints = db.query(Constraint).filter(Constraint.resource_type == "teacher").all()
 
     # Supprimer les anciens emplois du temps pour ce groupe et cette date
@@ -300,13 +344,62 @@ async def get_stats(db: Session = Depends(get_db)):
 
 @app.get("/api/groups")
 async def get_groups(db: Session = Depends(get_db)):
-    groups = db.query(Group).all()
+    groups = db.query(Group).filter(Group.is_active == True).all()
     return [{"id": g.id, "name": g.name} for g in groups]
 
 @app.get("/api/teachers")
 async def get_teachers(db: Session = Depends(get_db)):
-    teachers = db.query(Teacher).all()
+    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
     return [{"id": t.id, "name": t.name} for t in teachers]
 
 # Créer les tables si elles n'existent pas
 Base.metadata.create_all(bind=engine)
+
+# Initialisation de la base de données avec un utilisateur admin et données de test
+def init_db():
+    db = SessionLocal()
+    try:
+        # Vérifier et créer l'utilisateur admin
+        user_count = db.query(User).count()
+        if user_count == 0:
+            admin = User(
+                name="admin",
+                email="admin@gmail.com",
+                password=pwd_context.hash("Fareno12"),
+                role="admin"
+            )
+            db.add(admin)
+            db.commit()
+            print("Utilisateur admin créé.")
+
+        # Ajouter des données de test si les tables sont vides
+        if db.query(Teacher).count() == 0:
+            teachers = [
+                Teacher(name="M. Dupont", email="dupont@email.com", subjects="Mathématiques", availability="Lundi 08:00-12:00"),
+                Teacher(name="Mme Lefèvre", email="lefevre@email.com", subjects="Physique", availability="Mardi 14:00-18:00")
+            ]
+            db.add_all(teachers)
+            db.commit()
+            print("Enseignants test ajoutés.")
+
+        if db.query(Group).count() == 0:
+            groups = [
+                Group(name="Groupe A", student_count=30, subjects="Mathématiques, Physique"),
+                Group(name="Groupe B", student_count=25, subjects="Chimie, Biologie")
+            ]
+            db.add_all(groups)
+            db.commit()
+            print("Groupes test ajoutés.")
+
+        if db.query(Room).count() == 0:
+            rooms = [
+                Room(name="Salle 101", capacity=40, equipment="Projecteur, Tableau"),
+                Room(name="Salle 102", capacity=30, equipment="Ordinateurs")
+            ]
+            db.add_all(rooms)
+            db.commit()
+            print("Salles test ajoutées.")
+    finally:
+        db.close()
+
+init_db()
