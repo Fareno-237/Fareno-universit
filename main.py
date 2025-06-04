@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine, Column, Integer, String, Time, Date, Boolean, text
@@ -8,8 +8,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from passlib.context import CryptContext
 import csv
-from io import StringIO
-import datetime
+from io import StringIO, BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from icalendar import Calendar, Event
+from datetime import datetime, time, timedelta
 import random
 from typing import List, Optional
 import os
@@ -142,8 +146,7 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints existants (login, teachers, groups, rooms, timetable, etc.) restent inchangés ici
-# Ajout/Mise à jour des endpoints pour les contraintes
+# Endpoints existants (login, teachers, groups, rooms, constraints, timetable, etc.)
 
 @app.get("/api/constraints")
 async def get_constraints(db: Session = Depends(get_db)):
@@ -331,7 +334,7 @@ async def get_timetable_dates(db: Session = Depends(get_db)):
 async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_db)):
     # Logique simple de génération
     group_id = data.group_id
-    date = datetime.datetime.strptime(data.date, "%Y-%m-%d").date()
+    date = datetime.strptime(data.date, "%Y-%m-%d").date()
     days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
     time_slots = [
         {"start": "08:00", "end": "10:00"},
@@ -372,8 +375,8 @@ async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_
                 room_id=room.id,
                 subject=subject,
                 day=day,
-                start_time=datetime.datetime.strptime(slot["start"], "%H:%M").time(),
-                end_time=datetime.datetime.strptime(slot["end"], "%H:%M").time(),
+                start_time=datetime.strptime(slot["start"], "%H:%M").time(),
+                end_time=datetime.strptime(slot["end"], "%H:%M").time(),
                 date=date
             )
             db.add(new_entry)
@@ -390,6 +393,9 @@ async def export_timetable(
 ):
     timetable = await get_timetable(search=None, group_id=group_id, teacher_id=teacher_id, date=date, db=db)
     
+    if not timetable:
+        raise HTTPException(status_code=404, detail="Aucun emploi du temps disponible pour ces filtres")
+
     if format == "csv":
         output = StringIO()
         writer = csv.writer(output)
@@ -403,20 +409,85 @@ async def export_timetable(
                 entry["room_name"]
             ])
         output.seek(0)
-        return FileResponse(
-            output,
+        return StreamingResponse(
+            iter([output.getvalue()]),
             media_type="text/csv",
-            filename="timetable.csv"
+            headers={"Content-Disposition": "attachment; filename=timetable.csv"}
         )
-    elif format in ["pdf", "ical"]:
-        # Placeholder pour PDF et iCal (nécessite des bibliothèques supplémentaires)
-        raise HTTPException(status_code=501, detail="Format non implémenté")
+
+    elif format == "pdf":
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        data = [["Jour", "Heure", "Sujet", "Enseignant", "Salle"]]
+        for entry in timetable:
+            data.append([
+                entry["day"],
+                f"{entry['start_time']} - {entry['end_time']}",
+                entry["subject"],
+                entry["teacher_name"],
+                entry["room_name"]
+            ])
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.green),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements = [table]
+        doc.build(elements)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=timetable.pdf"}
+        )
+
+    elif format == "ical":
+        cal = Calendar()
+        cal.add('prodid', '-//Fareno University//Timetable//EN')
+        cal.add('version', '2.0')
+
+        for entry in timetable:
+            event = Event()
+            event.add('summary', f"{entry['subject']} - {entry['teacher_name']}")
+            event.add('location', entry['room_name'])
+
+            # Convertir le jour en date réelle
+            date = datetime.strptime(entry['date'], "%Y-%m-%d")
+            day_map = {"lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3, "vendredi": 4}
+            days_to_add = day_map[entry['day'].lower()]
+            event_date = date + timedelta(days=days_to_add)
+
+            start_time = datetime.strptime(entry['start_time'], "%H:%M").time()
+            end_time = datetime.strptime(entry['end_time'], "%H:%M").time()
+            event.add('dtstart', datetime.combine(event_date, start_time))
+            event.add('dtend', datetime.combine(event_date, end_time))
+            event.add('dtstamp', datetime.now())
+            cal.add_component(event)
+
+        buffer = BytesIO()
+        buffer.write(cal.to_ical())
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="text/calendar",
+            headers={"Content-Disposition": "attachment; filename=timetable.ics"}
+        )
+
     raise HTTPException(status_code=400, detail="Format non supporté")
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db)):
     timetables_count = db.query(Timetable).count()
-    active_users = db.query(User).filter(User.last_login >= datetime.datetime.now() - datetime.timedelta(days=30)).count()
+    active_users = db.query(User).filter(User.last_login >= datetime.now() - timedelta(days=30)).count()
     conflicts_resolved = db.query(Constraint).filter(Constraint.constraint_type == "resolved", Constraint.is_active == True).count()
     return {
         "timetables_generated": timetables_count,
@@ -474,8 +545,8 @@ def init_db():
 
         if db.query(Constraint).count() == 0:
             constraints = [
-                Constraint(resource_type="teacher", resource_id=1, resource_name="M. Dupont", day="lundi", time=datetime.time(8, 0), constraint_type="unavailable"),
-                Constraint(resource_type="teacher", resource_id=2, resource_name="Mme Lefèvre", day="mardi", time=datetime.time(14, 0), constraint_type="preference")
+                Constraint(resource_type="teacher", resource_id=1, resource_name="M. Dupont", day="lundi", time=time(8, 0), constraint_type="unavailable"),
+                Constraint(resource_type="teacher", resource_id=2, resource_name="Mme Lefèvre", day="mardi", time=time(14, 0), constraint_type="preference")
             ]
             db.add_all(constraints)
             db.commit()
