@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, Column, Integer, String, Time, Date, Boolean, text
+from sqlalchemy import create_engine, Column, Integer, String, Time, Date, Boolean, text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -46,6 +46,7 @@ class User(Base):
     email = Column(String(255), unique=True)
     password = Column(String(255))
     role = Column(String(50))
+    last_login = Column(DateTime)
 
 class Teacher(Base):
     __tablename__ = "teachers"
@@ -95,6 +96,15 @@ class Timetable(Base):
     end_time = Column(Time)
     date = Column(Date)
 
+class Log(Base):
+    __tablename__ = "logs"
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer)
+    user_name = Column(String(255))
+    action = Column(String(50))
+    details = Column(String(255))
+
 # Modèles Pydantic
 class LoginData(BaseModel):
     username: str
@@ -138,6 +148,12 @@ class RoomCreate(BaseModel):
     capacity: int
     equipment: str
 
+class AdjustmentCreate(BaseModel):
+    resource: str
+    day: str
+    time: str
+    new_value: str
+
 # Dépendance pour la session DB
 def get_db():
     db = SessionLocal()
@@ -146,8 +162,248 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints existants (login, teachers, groups, rooms, constraints, timetable, etc.)
+# Fonction utilitaire pour ajouter un log
+def add_log(db: Session, user_id: int, user_name: str, action: str, details: str):
+    new_log = Log(
+        user_id=user_id,
+        user_name=user_name,
+        action=action,
+        details=details
+    )
+    db.add(new_log)
+    db.commit()
 
+# Endpoints mis à jour pour inclure le logging
+@app.post("/api/constraints")
+async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get_db)):
+    new_constraint = Constraint(**constraint.dict())
+    db.add(new_constraint)
+    db.commit()
+    db.refresh(new_constraint)
+    # Ajouter un log
+    add_log(db, user_id=1, user_name="admin", action="create_constraint", details=f"Ajout de contrainte ID {new_constraint.id}")
+    return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
+
+@app.put("/api/constraints/{constraint_id}")
+async def update_constraint(constraint_id: int, constraint: ConstraintCreate, db: Session = Depends(get_db)):
+    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
+    if not db_constraint:
+        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+    for key, value in constraint.dict().items():
+        setattr(db_constraint, key, value)
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="update_constraint", details=f"Mise à jour de contrainte ID {constraint_id}")
+    return {"message": "Contrainte mise à jour avec succès"}
+
+@app.delete("/api/constraints/{constraint_id}")
+async def delete_constraint(constraint_id: int, db: Session = Depends(get_db)):
+    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
+    if not db_constraint:
+        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+    db_constraint.is_active = False
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="delete_constraint", details=f"Suppression logique de contrainte ID {constraint_id}")
+    return {"message": "Contrainte marquée comme supprimée avec succès"}
+
+@app.post("/api/teachers")
+async def create_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
+    db_teacher = Teacher(**teacher.dict())
+    db.add(db_teacher)
+    db.commit()
+    db.refresh(db_teacher)
+    add_log(db, user_id=1, user_name="admin", action="create_teacher", details=f"Ajout d'enseignant ID {db_teacher.id}")
+    return {"id": db_teacher.id, "message": "Enseignant ajouté avec succès"}
+
+@app.put("/api/teachers/{teacher_id}")
+async def update_teacher(teacher_id: int, teacher: TeacherCreate, db: Session = Depends(get_db)):
+    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
+    if not db_teacher:
+        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+    for key, value in teacher.dict().items():
+        setattr(db_teacher, key, value)
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="update_teacher", details=f"Mise à jour d'enseignant ID {teacher_id}")
+    return {"message": "Enseignant mis à jour avec succès"}
+
+@app.delete("/api/teachers/{teacher_id}")
+async def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
+    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
+    if not db_teacher:
+        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+    db_teacher.is_active = False
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="delete_teacher", details=f"Suppression logique d'enseignant ID {teacher_id}")
+    return {"message": "Enseignant marqué comme supprimé avec succès"}
+
+@app.post("/api/groups")
+async def create_group(group: GroupCreate, db: Session = Depends(get_db)):
+    db_group = Group(**group.dict())
+    db.add(db_group)
+    db.commit()
+    db.refresh(db_group)
+    add_log(db, user_id=1, user_name="admin", action="create_group", details=f"Ajout de groupe ID {db_group.id}")
+    return {"id": db_group.id, "message": "Groupe ajouté avec succès"}
+
+@app.put("/api/groups/{group_id}")
+async def update_group(group_id: int, group: GroupCreate, db: Session = Depends(get_db)):
+    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    for key, value in group.dict().items():
+        setattr(db_group, key, value)
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="update_group", details=f"Mise à jour de groupe ID {group_id}")
+    return {"message": "Groupe mis à jour avec succès"}
+
+@app.delete("/api/groups/{group_id}")
+async def delete_group(group_id: int, db: Session = Depends(get_db)):
+    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    db_group.is_active = False
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="delete_group", details=f"Suppression logique de groupe ID {group_id}")
+    return {"message": "Groupe marqué comme supprimé avec succès"}
+
+@app.post("/api/rooms")
+async def create_room(room: RoomCreate, db: Session = Depends(get_db)):
+    db_room = Room(**room.dict())
+    db.add(db_room)
+    db.commit()
+    db.refresh(db_room)
+    add_log(db, user_id=1, user_name="admin", action="create_room", details=f"Ajout de salle ID {db_room.id}")
+    return {"id": db_room.id, "message": "Salle ajoutée avec succès"}
+
+@app.put("/api/rooms/{room_id}")
+async def update_room(room_id: int, room: RoomCreate, db: Session = Depends(get_db)):
+    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
+    if not db_room:
+        raise HTTPException(status_code=404, detail="Salle non trouvée")
+    for key, value in room.dict().items():
+        setattr(db_room, key, value)
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="update_room", details=f"Mise à jour de salle ID {room_id}")
+    return {"message": "Salle mise à jour avec succès"}
+
+@app.delete("/api/rooms/{room_id}")
+async def delete_room(room_id: int, db: Session = Depends(get_db)):
+    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
+    if not db_room:
+        raise HTTPException(status_code=404, detail="Salle non trouvée")
+    db_room.is_active = False
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="delete_room", details=f"Suppression logique de salle ID {room_id}")
+    return {"message": "Salle marquée comme supprimée avec succès"}
+
+@app.post("/api/timetable/generate")
+async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_db)):
+    group_id = data.group_id
+    date = datetime.strptime(data.date, "%Y-%m-%d").date()
+    days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
+    time_slots = [
+        {"start": "08:00", "end": "10:00"},
+        {"start": "10:00", "end": "12:00"},
+        {"start": "14:00", "end": "16:00"},
+        {"start": "16:00", "end": "18:00"}
+    ]
+    subjects = ["Mathématiques", "Physique", "Chimie", "Biologie"]
+
+    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
+    rooms = db.query(Room).filter(Room.is_active == True).all()
+    constraints = db.query(Constraint).filter(Constraint.is_active == True, Constraint.resource_type == "teacher").all()
+
+    db.query(Timetable).filter(Timetable.group_id == group_id, Timetable.date == date).delete()
+    db.commit()
+
+    for day in days:
+        for slot in time_slots:
+            available_teachers = [t for t in teachers if not any(
+                c.resource_id == t.id and c.day == day and c.time.strftime("%H:%M") == slot["start"]
+                for c in constraints
+            )]
+            if not available_teachers:
+                continue
+
+            teacher = random.choice(available_teachers)
+            room = random.choice(rooms)
+            subject = random.choice(subjects)
+
+            new_entry = Timetable(
+                group_id=group_id,
+                teacher_id=teacher.id,
+                room_id=room.id,
+                subject=subject,
+                day=day,
+                start_time=datetime.strptime(slot["start"], "%H:%M").time(),
+                end_time=datetime.strptime(slot["end"], "%H:%M").time(),
+                date=date
+            )
+            db.add(new_entry)
+    db.commit()
+    add_log(db, user_id=1, user_name="admin", action="generate_timetable", details=f"Génération d'emploi du temps pour groupe ID {group_id} à la date {date}")
+    return {"message": "Emploi du temps généré avec succès"}
+
+# Nouveaux endpoints pour l'administration
+@app.get("/api/logs")
+async def get_logs(db: Session = Depends(get_db)):
+    logs = db.query(Log).order_by(Log.date.desc()).all()
+    return [
+        {
+            "id": log.id,
+            "date": log.date.strftime("%Y-%m-%d %H:%M:%S"),
+            "user": log.user_name,
+            "action": log.action,
+            "details": log.details
+        }
+        for log in logs
+    ]
+
+@app.post("/api/adjustments")
+async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = Depends(get_db)):
+    for adjustment in adjustments:
+        # Vérifier si la ressource existe dans les enseignants ou les groupes
+        teacher = db.query(Teacher).filter(Teacher.name == adjustment.resource, Teacher.is_active == True).first()
+        group = db.query(Group).filter(Group.name == adjustment.resource, Group.is_active == True).first()
+
+        if not teacher and not group:
+            raise HTTPException(status_code=404, detail=f"Ressource {adjustment.resource} non trouvée")
+
+        resource_type = "teacher" if teacher else "group"
+        resource_id = teacher.id if teacher else group.id
+        resource_name = adjustment.resource
+
+        # Vérifier si une contrainte existe déjà
+        existing_constraint = db.query(Constraint).filter(
+            Constraint.resource_type == resource_type,
+            Constraint.resource_id == resource_id,
+            Constraint.day == adjustment.day,
+            Constraint.time == datetime.strptime(adjustment.time, "%H:%M").time(),
+            Constraint.is_active == True
+        ).first()
+
+        if existing_constraint:
+            # Mettre à jour la contrainte existante
+            existing_constraint.constraint_type = adjustment.new_value.lower()
+            db.commit()
+            add_log(db, user_id=1, user_name="admin", action="update_adjustment", details=f"Mise à jour de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
+        else:
+            # Créer une nouvelle contrainte
+            new_constraint = Constraint(
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_name=resource_name,
+                day=adjustment.day,
+                time=datetime.strptime(adjustment.time, "%H:%M").time(),
+                constraint_type=adjustment.new_value.lower(),
+                is_active=True
+            )
+            db.add(new_constraint)
+            db.commit()
+            add_log(db, user_id=1, user_name="admin", action="create_adjustment", details=f"Création de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
+
+    return {"message": "Ajustements appliqués avec succès"}
+
+# Endpoints existants (non modifiés pour le logging ici pour brevité)
 @app.get("/api/constraints")
 async def get_constraints(db: Session = Depends(get_db)):
     constraints = db.query(Constraint).filter(Constraint.is_active == True).all()
@@ -164,128 +420,20 @@ async def get_constraints(db: Session = Depends(get_db)):
         for c in constraints
     ]
 
-@app.post("/api/constraints")
-async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get_db)):
-    new_constraint = Constraint(**constraint.dict())
-    db.add(new_constraint)
-    db.commit()
-    db.refresh(new_constraint)
-    return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
-
-@app.put("/api/constraints/{constraint_id}")
-async def update_constraint(constraint_id: int, constraint: ConstraintCreate, db: Session = Depends(get_db)):
-    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
-    if not db_constraint:
-        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
-    for key, value in constraint.dict().items():
-        setattr(db_constraint, key, value)
-    db.commit()
-    return {"message": "Contrainte mise à jour avec succès"}
-
-@app.delete("/api/constraints/{constraint_id}")
-async def delete_constraint(constraint_id: int, db: Session = Depends(get_db)):
-    db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
-    if not db_constraint:
-        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
-    db_constraint.is_active = False
-    db.commit()
-    return {"message": "Contrainte marquée comme supprimée avec succès"}
-
 @app.get("/api/teachers")
 async def get_teachers(db: Session = Depends(get_db)):
     teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
     return [{"id": t.id, "name": t.name, "email": t.email, "subjects": t.subjects, "availability": t.availability} for t in teachers]
-
-@app.post("/api/teachers")
-async def create_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
-    db_teacher = Teacher(**teacher.dict())
-    db.add(db_teacher)
-    db.commit()
-    db.refresh(db_teacher)
-    return {"id": db_teacher.id, "message": "Enseignant ajouté avec succès"}
-
-@app.put("/api/teachers/{teacher_id}")
-async def update_teacher(teacher_id: int, teacher: TeacherCreate, db: Session = Depends(get_db)):
-    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
-    if not db_teacher:
-        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
-    for key, value in teacher.dict().items():
-        setattr(db_teacher, key, value)
-    db.commit()
-    return {"message": "Enseignant mis à jour avec succès"}
-
-@app.delete("/api/teachers/{teacher_id}")
-async def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
-    db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
-    if not db_teacher:
-        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
-    db_teacher.is_active = False
-    db.commit()
-    return {"message": "Enseignant marqué comme supprimé avec succès"}
 
 @app.get("/api/groups")
 async def get_groups(db: Session = Depends(get_db)):
     groups = db.query(Group).filter(Group.is_active == True).all()
     return [{"id": g.id, "name": g.name, "student_count": g.student_count, "subjects": g.subjects} for g in groups]
 
-@app.post("/api/groups")
-async def create_group(group: GroupCreate, db: Session = Depends(get_db)):
-    db_group = Group(**group.dict())
-    db.add(db_group)
-    db.commit()
-    db.refresh(db_group)
-    return {"id": db_group.id, "message": "Groupe ajouté avec succès"}
-
-@app.put("/api/groups/{group_id}")
-async def update_group(group_id: int, group: GroupCreate, db: Session = Depends(get_db)):
-    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
-    if not db_group:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
-    for key, value in group.dict().items():
-        setattr(db_group, key, value)
-    db.commit()
-    return {"message": "Groupe mis à jour avec succès"}
-
-@app.delete("/api/groups/{group_id}")
-async def delete_group(group_id: int, db: Session = Depends(get_db)):
-    db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
-    if not db_group:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
-    db_group.is_active = False
-    db.commit()
-    return {"message": "Groupe marqué comme supprimé avec succès"}
-
 @app.get("/api/rooms")
 async def get_rooms(db: Session = Depends(get_db)):
     rooms = db.query(Room).filter(Room.is_active == True).all()
     return [{"id": r.id, "name": r.name, "capacity": r.capacity, "equipment": r.equipment} for r in rooms]
-
-@app.post("/api/rooms")
-async def create_room(room: RoomCreate, db: Session = Depends(get_db)):
-    db_room = Room(**room.dict())
-    db.add(db_room)
-    db.commit()
-    db.refresh(db_room)
-    return {"id": db_room.id, "message": "Salle ajoutée avec succès"}
-
-@app.put("/api/rooms/{room_id}")
-async def update_room(room_id: int, room: RoomCreate, db: Session = Depends(get_db)):
-    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
-    if not db_room:
-        raise HTTPException(status_code=404, detail="Salle non trouvée")
-    for key, value in room.dict().items():
-        setattr(db_room, key, value)
-    db.commit()
-    return {"message": "Salle mise à jour avec succès"}
-
-@app.delete("/api/rooms/{room_id}")
-async def delete_room(room_id: int, db: Session = Depends(get_db)):
-    db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
-    if not db_room:
-        raise HTTPException(status_code=404, detail="Salle non trouvée")
-    db_room.is_active = False
-    db.commit()
-    return {"message": "Salle marquée comme supprimée avec succès"}
 
 @app.get("/api/timetable")
 async def get_timetable(
@@ -329,59 +477,6 @@ async def get_timetable(
 async def get_timetable_dates(db: Session = Depends(get_db)):
     dates = db.query(Timetable.date).distinct().all()
     return [d[0].strftime("%Y-%m-%d") for d in dates]
-
-@app.post("/api/timetable/generate")
-async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_db)):
-    # Logique simple de génération
-    group_id = data.group_id
-    date = datetime.strptime(data.date, "%Y-%m-%d").date()
-    days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
-    time_slots = [
-        {"start": "08:00", "end": "10:00"},
-        {"start": "10:00", "end": "12:00"},
-        {"start": "14:00", "end": "16:00"},
-        {"start": "16:00", "end": "18:00"}
-    ]
-    subjects = ["Mathématiques", "Physique", "Chimie", "Biologie"]
-
-    # Récupérer les ressources actives
-    teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
-    rooms = db.query(Room).filter(Room.is_active == True).all()
-    constraints = db.query(Constraint).filter(Constraint.is_active == True, Constraint.resource_type == "teacher").all()
-
-    # Supprimer les anciens emplois du temps pour ce groupe et cette date
-    db.query(Timetable).filter(Timetable.group_id == group_id, Timetable.date == date).delete()
-    db.commit()
-
-    # Générer un emploi du temps
-    for day in days:
-        for slot in time_slots:
-            # Vérifier les contraintes
-            available_teachers = [t for t in teachers if not any(
-                c.resource_id == t.id and c.day == day and c.time.strftime("%H:%M") == slot["start"]
-                for c in constraints
-            )]
-            if not available_teachers:
-                continue
-
-            # Assigner aléatoirement
-            teacher = random.choice(available_teachers)
-            room = random.choice(rooms)
-            subject = random.choice(subjects)
-
-            new_entry = Timetable(
-                group_id=group_id,
-                teacher_id=teacher.id,
-                room_id=room.id,
-                subject=subject,
-                day=day,
-                start_time=datetime.strptime(slot["start"], "%H:%M").time(),
-                end_time=datetime.strptime(slot["end"], "%H:%M").time(),
-                date=date
-            )
-            db.add(new_entry)
-    db.commit()
-    return {"message": "Emploi du temps généré avec succès"}
 
 @app.get("/api/timetable/export/{format}")
 async def export_timetable(
@@ -460,7 +555,6 @@ async def export_timetable(
             event.add('summary', f"{entry['subject']} - {entry['teacher_name']}")
             event.add('location', entry['room_name'])
 
-            # Convertir le jour en date réelle
             date = datetime.strptime(entry['date'], "%Y-%m-%d")
             day_map = {"lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3, "vendredi": 4}
             days_to_add = day_map[entry['day'].lower()]
@@ -502,7 +596,6 @@ Base.metadata.create_all(bind=engine)
 def init_db():
     db = SessionLocal()
     try:
-        # Vérifier et créer l'utilisateur admin
         user_count = db.query(User).count()
         if user_count == 0:
             admin = User(
@@ -515,7 +608,6 @@ def init_db():
             db.commit()
             print("Utilisateur admin créé.")
 
-        # Ajouter des données de test si les tables sont vides
         if db.query(Teacher).count() == 0:
             teachers = [
                 Teacher(name="M. Dupont", email="dupont@email.com", subjects="Mathématiques", availability="Lundi 08:00-12:00"),
