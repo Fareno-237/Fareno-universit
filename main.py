@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configuration
-DATABASE_URL = "postgresql://neondb_owner:npg_MeZ5NpjCIwf3@ep-floral-dust-a8bnqhyc-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+DATABASE_URL = "postgresql+psycopg://neondb_owner:npg_MeZ5NpjCIwf3@ep-floral-dust-a8bnqhyc-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&connect_timeout=10"
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
