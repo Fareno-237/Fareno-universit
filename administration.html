@@ -81,6 +81,23 @@
             animation: fadeIn 0.5s ease-out forwards;
         }
 
+        .message {
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+
+        .message.error {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
         h1 {
             font-size: 2.2rem;
             color: #4CAF50;
@@ -203,22 +220,6 @@
             z-index: 1000;
         }
 
-        .loading-message {
-            text-align: center;
-            padding: 1rem;
-            font-size: 1rem;
-            color: #4CAF50;
-            display: none;
-        }
-
-        .no-data-message {
-            text-align: center;
-            padding: 1rem;
-            font-size: 1rem;
-            color: #ff4d4d;
-            display: none;
-        }
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -284,6 +285,7 @@
         <nav class="sidebar" id="sidebar">
             <img src="FARENOUNIVERSITY.jpg" alt="Fareno University Logo">
             <a href="dashboard.html">Tableau de Bord</a>
+            <a href="gestion-utilisateurs.html">Gestion des Utilisateurs</a>
             <a href="gestion-ressources.html">Gestion des Ressources</a>
             <a href="saisie-contraintes.html">Saisie des Contraintes</a>
             <a href="visualisation.html">Visualisation</a>
@@ -300,14 +302,13 @@
                 <div class="tab" onclick="openTab('adjustments')">Ajustements Manuels</div>
             </div>
             <div id="logs" class="tab-content active">
+                <div class="message" id="logs-message"></div>
                 <div class="actions">
                     <div class="search-bar">
                         <input type="text" placeholder="Rechercher dans les logs..." onkeyup="filterLogs()">
                     </div>
                 </div>
-                <div class="loading-message" id="logs-loading-message">Chargement des logs...</div>
-                <div class="no-data-message" id="logs-no-data-message">Aucun log disponible.</div>
-                <div class="log-table" id="log-table">
+                <div class="log-table">
                     <table>
                         <thead>
                             <tr>
@@ -318,201 +319,193 @@
                             </tr>
                         </thead>
                         <tbody id="log-table-body">
-                            <!-- Les logs seront insérés dynamiquement via JavaScript -->
+                            <!-- Les logs seront chargés dynamiquement -->
                         </tbody>
                     </table>
                 </div>
             </div>
             <div id="adjustments" class="tab-content">
+                <div class="message" id="adjustments-message"></div>
                 <div class="actions">
                     <div class="search-bar">
                         <input type="text" placeholder="Rechercher un ajustement..." onkeyup="filterAdjustments()">
                     </div>
-                    <button class="apply-btn" onclick="saveAdjustments()">Appliquer Ajustements</button>
+                    <button class="apply-btn" onclick="applyAdjustments()">Appliquer Ajustements</button>
                 </div>
                 <div class="adjustment-form">
-                    <form id="adjustment-form">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Ressource</th>
-                                    <th>Jour</th>
-                                    <th>Heure</th>
-                                    <th>Nouvelle Valeur</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adjustment-table-body">
-                                <tr>
-                                    <td><input type="text" name="resource" value="Mme Lefèvre"></td>
-                                    <td><select name="day">
-                                        <option value="lundi">Lundi</option>
-                                        <option value="mardi">Mardi</option>
-                                        <option value="mercredi">Mercredi</option>
-                                        <option value="jeudi">Jeudi</option>
-                                        <option value="vendredi">Vendredi</option>
-                                    </select></td>
-                                    <td><input type="time" name="time" value="10:00"></td>
-                                    <td><input type="text" name="new_value" value="Disponible"></td>
-                                </tr>
-                                <tr>
-                                    <td><input type="text" name="resource" value="Groupe A"></td>
-                                    <td><select name="day">
-                                        <option value="mercredi">Mercredi</option>
-                                        <option value="lundi">Lundi</option>
-                                        <option value="mardi">Mardi</option>
-                                        <option value="jeudi">Jeudi</option>
-                                        <option value="vendredi">Vendredi</option>
-                                    </select></td>
-                                    <td><input type="time" name="time" value="14:00"></td>
-                                    <td><input type="text" name="new_value" value="Préférence"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </form>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ressource</th>
+                                <th>Jour</th>
+                                <th>Heure</th>
+                                <th>Nouvelle Valeur</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adjustments-table-body">
+                            <!-- Les contraintes seront chargées dynamiquement -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
+        // URL de l'API (ajustée pour votre environnement, à confirmer)
+        const API_URL = 'https://ep-steep-hat-a8yxx3sa-pooler.eastus2.azure.neon.tech/api';
+
+        // Charger les logs dynamiquement
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_URL}/logs`);
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des logs');
+                }
+                const logs = await response.json();
+                const logTableBody = document.getElementById('log-table-body');
+                logTableBody.innerHTML = ''; // Vider le tableau
+                logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.date}</td>
+                        <td>${log.user}</td>
+                        <td>${log.action}</td>
+                        <td>${log.details}</td>
+                    `;
+                    logTableBody.appendChild(row);
+                });
+                showMessage('logs-message', 'success', 'Logs chargés avec succès');
+            } catch (error) {
+                showMessage('logs-message', 'error', `Erreur: ${error.message}`);
+            }
+        }
+
+        // Charger les contraintes dynamiquement pour l'onglet Ajustements
+        async function loadConstraints() {
+            try {
+                const response = await fetch(`${API_URL}/constraints`);
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des contraintes');
+                }
+                const constraints = await response.json();
+                const adjustmentsTableBody = document.getElementById('adjustments-table-body');
+                adjustmentsTableBody.innerHTML = ''; // Vider le tableau
+                constraints.forEach(constraint => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><input type="text" name="resource" value="${constraint.resource_name}"></td>
+                        <td><select name="day">
+                            <option value="lundi" ${constraint.day === 'lundi' ? 'selected' : ''}>Lundi</option>
+                            <option value="mardi" ${constraint.day === 'mardi' ? 'selected' : ''}>Mardi</option>
+                            <option value="mercredi" ${constraint.day === 'mercredi' ? 'selected' : ''}>Mercredi</option>
+                            <option value="jeudi" ${constraint.day === 'jeudi' ? 'selected' : ''}>Jeudi</option>
+                            <option value="vendredi" ${constraint.day === 'vendredi' ? 'selected' : ''}>Vendredi</option>
+                        </select></td>
+                        <td><input type="time" name="time" value="${constraint.time}"></td>
+                        <td><input type="text" name="new_value" value="${constraint.constraint_type}"></td>
+                    `;
+                    adjustmentsTableBody.appendChild(row);
+                });
+                showMessage('adjustments-message', 'success', 'Contraintes chargées avec succès');
+            } catch (error) {
+                showMessage('adjustments-message', 'error', `Erreur: ${error.message}`);
+            }
+        }
+
+        // Appliquer les ajustements manuels
+        async function applyAdjustments() {
+            const rows = document.querySelectorAll('#adjustments-table-body tr');
+            const adjustments = [];
+            rows.forEach(row => {
+                const resource = row.querySelector('input[name="resource"]').value;
+                const day = row.querySelector('select[name="day"]').value;
+                const time = row.querySelector('input[name="time"]').value;
+                const new_value = row.querySelector('input[name="new_value"]').value;
+                if (resource && day && time && new_value) {
+                    adjustments.push({ resource, day, time, new_value });
+                }
+            });
+
+            if (adjustments.length === 0) {
+                showMessage('adjustments-message', 'error', 'Aucun ajustement valide à appliquer');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/adjustments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(adjustments),
+                });
+                if (!response.ok) {
+                    throw new Error('Erreur lors de l\'application des ajustements');
+                }
+                const result = await response.json();
+                showMessage('adjustments-message', 'success', result.message);
+                // Recharger les contraintes après application
+                loadConstraints();
+            } catch (error) {
+                showMessage('adjustments-message', 'error', `Erreur: ${error.message}`);
+            }
+        }
+
+        // Afficher un message de succès ou d'erreur
+        function showMessage(elementId, type, message) {
+            const messageElement = document.getElementById(elementId);
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = message;
+            messageElement.style.display = 'block';
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 5000); // Masquer après 5 secondes
+        }
+
+        // Filtrer les logs
+        function filterLogs() {
+            const input = document.querySelector('#logs .search-bar input').value.toLowerCase();
+            const rows = document.querySelectorAll('#log-table-body tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(input) ? '' : 'none';
+            });
+        }
+
+        // Filtrer les ajustements
+        function filterAdjustments() {
+            const input = document.querySelector('#adjustments .search-bar input').value.toLowerCase();
+            const rows = document.querySelectorAll('#adjustments-table-body tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(input) ? '' : 'none';
+            });
+        }
+
+        // Basculer la barre latérale
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');
         }
 
+        // Changer d'onglet
         function openTab(tabName) {
             const tabs = document.querySelectorAll('.tab');
             const contents = document.querySelectorAll('.tab-content');
-
             tabs.forEach(tab => tab.classList.remove('active'));
             contents.forEach(content => content.classList.remove('active'));
-
             document.querySelector(`.tab[onclick="openTab('${tabName}')"]`).classList.add('active');
             document.getElementById(tabName).classList.add('active');
-
             if (tabName === 'logs') {
                 loadLogs();
+            } else if (tabName === 'adjustments') {
+                loadConstraints();
             }
         }
 
-        function showLogsLoading(show) {
-            document.getElementById('logs-loading-message').style.display = show ? 'block' : 'none';
-            document.getElementById('log-table').style.display = show ? 'none' : 'block';
-            document.getElementById('logs-no-data-message').style.display = 'none';
-        }
-
-        function showNoLogsData(show) {
-            document.getElementById('logs-no-data-message').style.display = show ? 'block' : 'none';
-            document.getElementById('log-table').style.display = show ? 'none' : 'block';
-            document.getElementById('logs-loading-message').style.display = 'none';
-        }
-
-        function filterLogs() {
-            const input = document.querySelector('#logs .search-bar input').value.toLowerCase();
-            const rows = document.querySelectorAll('#log-table-body tr');
-
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(input) ? '' : 'none';
-            });
-        }
-
-        function filterAdjustments() {
-            const input = document.querySelector('#adjustments .search-bar input').value.toLowerCase();
-            const rows = document.querySelectorAll('#adjustments table tbody tr');
-
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(input) ? '' : 'none';
-            });
-        }
-
-        function loadLogs() {
-            showLogsLoading(true);
-
-            fetch('/api/logs')
-                .then(response => response.json())
-                .then(data => {
-                    const logTableBody = document.getElementById('log-table-body');
-                    logTableBody.innerHTML = '';
-
-                    if (data.length === 0) {
-                        showNoLogsData(true);
-                        return;
-                    }
-
-                    data.forEach(log => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${log.date}</td>
-                            <td>${log.user}</td>
-                            <td>${log.action}</td>
-                            <td>${log.details}</td>
-                        `;
-                        logTableBody.appendChild(row);
-                    });
-
-                    showLogsLoading(false);
-                    filterLogs();
-                })
-                .catch(error => {
-                    console.error('Erreur lors du chargement des logs:', error);
-                    alert('Erreur lors du chargement des logs');
-                    showLogsLoading(false);
-                });
-        }
-
-        function saveAdjustments() {
-            const form = document.getElementById('adjustment-form');
-            const rows = form.querySelectorAll('tbody tr');
-            const adjustments = [];
-
-            for (const row of rows) {
-                const resource = row.querySelector('input[name="resource"]').value.trim();
-                const day = row.querySelector('select[name="day"]').value;
-                const time = row.querySelector('input[name="time"]').value;
-                const new_value = row.querySelector('input[name="new_value"]').value.trim();
-
-                if (!resource || !day || !time || !new_value) {
-                    alert('Veuillez remplir tous les champs pour chaque ajustement.');
-                    return;
-                }
-
-                if (!["disponible", "préférence", "indisponible"].includes(new_value.toLowerCase())) {
-                    alert('La nouvelle valeur doit être "Disponible", "Préférence", ou "Indisponible".');
-                    return;
-                }
-
-                adjustments.push({ resource, day, time, new_value });
-            }
-
-            if (adjustments.length === 0) {
-                alert('Aucun ajustement à appliquer.');
-                return;
-            }
-
-            fetch('/api/adjustments', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(adjustments)
-            })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message || data.error);
-                })
-                .catch(error => {
-                    console.error('Erreur lors de l\'enregistrement des ajustements:', error);
-                    alert('Erreur lors de l\'enregistrement des ajustements');
-                });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.querySelector('#logs').classList.contains('active')) {
-                loadLogs();
-            }
-        });
+        // Charger les logs au démarrage
+        window.onload = loadLogs;
     </script>
 </body>
 </html>
