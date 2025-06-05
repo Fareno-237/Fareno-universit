@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, Column, Integer, String, Time, Date, Boolean, text, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Time, Date, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -15,38 +15,29 @@ from reportlab.lib import colors
 from icalendar import Calendar, Event
 from datetime import datetime, time, timedelta
 import random
-from typing import List, Optional
 import os
 import logging
 
-# Configuration du logging pour capturer les erreurs
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configuration
-DATABASE_URL = "postgresql+psycopg://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abibnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db?sslmode=disable"
-engine = create_engine(DATABASE_URL, echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Database connection
+DATABASE_URL = "postgresql://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abibnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"])
+
+# FastAPI app setup
 app = FastAPI()
-
-# Monter la racine comme dossier statique pour servir les fichiers HTML
 app.mount("/", StaticFiles(directory=".", html=True), name="root")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Modèles SQLAlchemy
+# Database models
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(255), unique=True)
     email = Column(String(255), unique=True)
     password = Column(String(255))
@@ -55,7 +46,7 @@ class User(Base):
 
 class Teacher(Base):
     __tablename__ = "teachers"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(255))
     email = Column(String(255))
     subjects = Column(String(255))
@@ -64,7 +55,7 @@ class Teacher(Base):
 
 class Group(Base):
     __tablename__ = "groups"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(255))
     student_count = Column(Integer)
     subjects = Column(String(255))
@@ -72,7 +63,7 @@ class Group(Base):
 
 class Room(Base):
     __tablename__ = "rooms"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(255))
     capacity = Column(Integer)
     equipment = Column(String(255))
@@ -80,7 +71,7 @@ class Room(Base):
 
 class Constraint(Base):
     __tablename__ = "constraints"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     resource_type = Column(String(50))
     resource_id = Column(Integer)
     resource_name = Column(String(255))
@@ -91,7 +82,7 @@ class Constraint(Base):
 
 class Timetable(Base):
     __tablename__ = "timetable"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     group_id = Column(Integer)
     teacher_id = Column(Integer)
     room_id = Column(Integer)
@@ -103,14 +94,14 @@ class Timetable(Base):
 
 class Log(Base):
     __tablename__ = "logs"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     date = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer)
     user_name = Column(String(255))
     action = Column(String(50))
     details = Column(String(255))
 
-# Modèles Pydantic
+# Pydantic models
 class LoginData(BaseModel):
     username: str
     password: str
@@ -159,7 +150,7 @@ class AdjustmentCreate(BaseModel):
     time: str
     new_value: str
 
-# Dépendance pour la session DB
+# Database session dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -167,149 +158,139 @@ def get_db():
     finally:
         db.close()
 
-# Fonction utilitaire pour ajouter un log
-def add_log(db: Session, user_id: int, user_name: str, action: str, details: str):
-    new_log = Log(
-        user_id=user_id,
-        user_name=user_name,
-        action=action,
-        details=details
-    )
-    db.add(new_log)
+# Logging helper
+def log_action(db: Session, user_id: int, user_name: str, action: str, details: str):
+    log = Log(user_id=user_id, user_name=user_name, action=action, details=details)
+    db.add(log)
     db.commit()
 
-# Endpoints mis à jour pour inclure le logging
+# API endpoints
 @app.post("/api/constraints")
 async def add_constraint(constraint: ConstraintCreate, db: Session = Depends(get_db)):
     new_constraint = Constraint(**constraint.dict())
     db.add(new_constraint)
     db.commit()
     db.refresh(new_constraint)
-    add_log(db, user_id=1, user_name="admin", action="create_constraint", details=f"Ajout de contrainte ID {new_constraint.id}")
-    return {"id": new_constraint.id, "message": "Contrainte ajoutée avec succès"}
+    log_action(db, 1, "admin", "create_constraint", f"Added constraint ID {new_constraint.id}")
+    return {"id": new_constraint.id, "message": "Constraint added"}
 
 @app.put("/api/constraints/{constraint_id}")
 async def update_constraint(constraint_id: int, constraint: ConstraintCreate, db: Session = Depends(get_db)):
     db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
     if not db_constraint:
-        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+        raise HTTPException(status_code=404, detail="Constraint not found")
     for key, value in constraint.dict().items():
         setattr(db_constraint, key, value)
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="update_constraint", details=f"Mise à jour de contrainte ID {constraint_id}")
-    return {"message": "Contrainte mise à jour avec succès"}
+    log_action(db, 1, "admin", "update_constraint", f"Updated constraint ID {constraint_id}")
+    return {"message": "Constraint updated"}
 
 @app.delete("/api/constraints/{constraint_id}")
 async def delete_constraint(constraint_id: int, db: Session = Depends(get_db)):
     db_constraint = db.query(Constraint).filter(Constraint.id == constraint_id, Constraint.is_active == True).first()
     if not db_constraint:
-        raise HTTPException(status_code=404, detail="Contrainte non trouvée")
+        raise HTTPException(status_code=404, detail="Constraint not found")
     db_constraint.is_active = False
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="delete_constraint", details=f"Suppression logique de contrainte ID {constraint_id}")
-    return {"message": "Contrainte marquée comme supprimée avec succès"}
+    log_action(db, 1, "admin", "delete_constraint", f"Deleted constraint ID {constraint_id}")
+    return {"message": "Constraint deleted"}
 
 @app.post("/api/teachers")
 async def create_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
-    db_teacher = Teacher(**teacher.dict())
-    db.add(db_teacher)
+    new_teacher = Teacher(**teacher.dict())
+    db.add(new_teacher)
     db.commit()
-    db.refresh(db_teacher)
-    add_log(db, user_id=1, user_name="admin", action="create_teacher", details=f"Ajout d'enseignant ID {db_teacher.id}")
-    return {"id": db_teacher.id, "message": "Enseignant ajouté avec succès"}
+    db.refresh(new_teacher)
+    log_action(db, 1, "admin", "create_teacher", f"Added teacher ID {new_teacher.id}")
+    return {"id": new_teacher.id, "message": "Teacher added"}
 
 @app.put("/api/teachers/{teacher_id}")
 async def update_teacher(teacher_id: int, teacher: TeacherCreate, db: Session = Depends(get_db)):
     db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
     if not db_teacher:
-        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+        raise HTTPException(status_code=404, detail="Teacher not found")
     for key, value in teacher.dict().items():
         setattr(db_teacher, key, value)
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="update_teacher", details=f"Mise à jour d'enseignant ID {teacher_id}")
-    return {"message": "Enseignant mis à jour avec succès"}
+    log_action(db, 1, "admin", "update_teacher", f"Updated teacher ID {teacher_id}")
+    return {"message": "Teacher updated"}
 
 @app.delete("/api/teachers/{teacher_id}")
 async def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
     db_teacher = db.query(Teacher).filter(Teacher.id == teacher_id, Teacher.is_active == True).first()
     if not db_teacher:
-        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+        raise HTTPException(status_code=404, detail="Teacher not found")
     db_teacher.is_active = False
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="delete_teacher", details=f"Suppression logique d'enseignant ID {teacher_id}")
-    return {"message": "Enseignant marqué comme supprimé avec succès"}
+    log_action(db, 1, "admin", "delete_teacher", f"Deleted teacher ID {teacher_id}")
+    return {"message": "Teacher deleted"}
 
 @app.post("/api/groups")
 async def create_group(group: GroupCreate, db: Session = Depends(get_db)):
-    db_group = Group(**group.dict())
-    db.add(db_group)
+    new_group = Group(**group.dict())
+    db.add(new_group)
     db.commit()
-    db.refresh(db_group)
-    add_log(db, user_id=1, user_name="admin", action="create_group", details=f"Ajout de groupe ID {db_group.id}")
-    return {"id": db_group.id, "message": "Groupe ajouté avec succès"}
+    db.refresh(new_group)
+    log_action(db, 1, "admin", "create_group", f"Added group ID {new_group.id}")
+    return {"id": new_group.id, "message": "Group added"}
 
 @app.put("/api/groups/{group_id}")
 async def update_group(group_id: int, group: GroupCreate, db: Session = Depends(get_db)):
     db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
     if not db_group:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+        raise HTTPException(status_code=404, detail="Group not found")
     for key, value in group.dict().items():
         setattr(db_group, key, value)
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="update_group", details=f"Mise à jour de groupe ID {group_id}")
-    return {"message": "Groupe mis à jour avec succès"}
+    log_action(db, 1, "admin", "update_group", f"Updated group ID {group_id}")
+    return {"message": "Group updated"}
 
 @app.delete("/api/groups/{group_id}")
 async def delete_group(group_id: int, db: Session = Depends(get_db)):
     db_group = db.query(Group).filter(Group.id == group_id, Group.is_active == True).first()
     if not db_group:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+        raise HTTPException(status_code=404, detail="Group not found")
     db_group.is_active = False
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="delete_group", details=f"Suppression logique de groupe ID {group_id}")
-    return {"message": "Groupe marqué comme supprimé avec succès"}
+    log_action(db, 1, "admin", "delete_group", f"Deleted group ID {group_id}")
+    return {"message": "Group deleted"}
 
 @app.post("/api/rooms")
 async def create_room(room: RoomCreate, db: Session = Depends(get_db)):
-    db_room = Room(**room.dict())
-    db.add(db_room)
+    new_room = Room(**room.dict())
+    db.add(new_room)
     db.commit()
-    db.refresh(db_room)
-    add_log(db, user_id=1, user_name="admin", action="create_room", details=f"Ajout de salle ID {db_room.id}")
-    return {"id": db_room.id, "message": "Salle ajoutée avec succès"}
+    db.refresh(new_room)
+    log_action(db, 1, "admin", "create_room", f"Added room ID {new_room.id}")
+    return {"id": new_room.id, "message": "Room added"}
 
 @app.put("/api/rooms/{room_id}")
 async def update_room(room_id: int, room: RoomCreate, db: Session = Depends(get_db)):
     db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
     if not db_room:
-        raise HTTPException(status_code=404, detail="Salle non trouvée")
+        raise HTTPException(status_code=404, detail="Room not found")
     for key, value in room.dict().items():
         setattr(db_room, key, value)
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="update_room", details=f"Mise à jour de salle ID {room_id}")
-    return {"message": "Salle mise à jour avec succès"}
+    log_action(db, 1, "admin", "update_room", f"Updated room ID {room_id}")
+    return {"message": "Room updated"}
 
 @app.delete("/api/rooms/{room_id}")
 async def delete_room(room_id: int, db: Session = Depends(get_db)):
     db_room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()
     if not db_room:
-        raise HTTPException(status_code=404, detail="Salle non trouvée")
+        raise HTTPException(status_code=404, detail="Room not found")
     db_room.is_active = False
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="delete_room", details=f"Suppression logique de salle ID {room_id}")
-    return {"message": "Salle marquée comme supprimée avec succès"}
+    log_action(db, 1, "admin", "delete_room", f"Deleted room ID {room_id}")
+    return {"message": "Room deleted"}
 
 @app.post("/api/timetable/generate")
 async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_db)):
     group_id = data.group_id
     date = datetime.strptime(data.date, "%Y-%m-%d").date()
     days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
-    time_slots = [
-        {"start": "08:00", "end": "10:00"},
-        {"start": "10:00", "end": "12:00"},
-        {"start": "14:00", "end": "16:00"},
-        {"start": "16:00", "end": "18:00"}
-    ]
+    time_slots = [{"start": "08:00", "end": "10:00"}, {"start": "10:00", "end": "12:00"}, {"start": "14:00", "end": "16:00"}, {"start": "16:00", "end": "18:00"}]
     subjects = ["Mathématiques", "Physique", "Chimie", "Biologie"]
 
     teachers = db.query(Teacher).filter(Teacher.is_active == True).all()
@@ -321,17 +302,12 @@ async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_
 
     for day in days:
         for slot in time_slots:
-            available_teachers = [t for t in teachers if not any(
-                c.resource_id == t.id and c.day == day and c.time.strftime("%H:%M") == slot["start"]
-                for c in constraints
-            )]
+            available_teachers = [t for t in teachers if not any(c.resource_id == t.id and c.day == day and c.time.strftime("%H:%M") == slot["start"] for c in constraints)]
             if not available_teachers:
                 continue
-
             teacher = random.choice(available_teachers)
             room = random.choice(rooms)
             subject = random.choice(subjects)
-
             new_entry = Timetable(
                 group_id=group_id,
                 teacher_id=teacher.id,
@@ -344,92 +320,50 @@ async def generate_timetable(data: TimetableGenerate, db: Session = Depends(get_
             )
             db.add(new_entry)
     db.commit()
-    add_log(db, user_id=1, user_name="admin", action="generate_timetable", details=f"Génération d'emploi du temps pour groupe ID {group_id} à la date {date}")
-    return {"message": "Emploi du temps généré avec succès"}
+    log_action(db, 1, "admin", "generate_timetable", f"Generated timetable for group ID {group_id} on {date}")
+    return {"message": "Timetable generated"}
 
-# Nouveaux endpoints pour l'administration
 @app.get("/api/logs")
 async def get_logs(db: Session = Depends(get_db)):
     logs = db.query(Log).order_by(Log.date.desc()).all()
-    return [
-        {
-            "id": log.id,
-            "date": log.date.strftime("%Y-%m-%d %H:%M:%S"),
-            "user": log.user_name,
-            "action": log.action,
-            "details": log.details
-        }
-        for log in logs
-    ]
+    return [{"id": log.id, "date": log.date.strftime("%Y-%m-%d %H:%M:%S"), "user": log.user_name, "action": log.action, "details": log.details} for log in logs]
 
 @app.post("/api/adjustments")
-async def save_adjustments(adjustments: List[AdjustmentCreate], db: Session = Depends(get_db)):
-    for adjustment in adjustments:
-        teacher = db.query(Teacher).filter(Teacher.name == adjustment.resource, Teacher.is_active == True).first()
-        group = db.query(Group).filter(Group.name == adjustment.resource, Group.is_active == True).first()
-
+async def save_adjustments(adjustments: list[AdjustmentCreate], db: Session = Depends(get_db)):
+    for adj in adjustments:
+        teacher = db.query(Teacher).filter(Teacher.name == adj.resource, Teacher.is_active == True).first()
+        group = db.query(Group).filter(Group.name == adj.resource, Group.is_active == True).first()
         if not teacher and not group:
-            raise HTTPException(status_code=404, detail=f"Ressource {adjustment.resource} non trouvée")
-
+            raise HTTPException(status_code=404, detail=f"Resource {adj.resource} not found")
         resource_type = "teacher" if teacher else "group"
         resource_id = teacher.id if teacher else group.id
-        resource_name = adjustment.resource
-
-        existing_constraint = db.query(Constraint).filter(
-            Constraint.resource_type == resource_type,
-            Constraint.resource_id == resource_id,
-            Constraint.day == adjustment.day,
-            Constraint.time == datetime.strptime(adjustment.time, "%H:%M").time(),
-            Constraint.is_active == True
-        ).first()
-
-        if existing_constraint:
-            existing_constraint.constraint_type = adjustment.new_value.lower()
+        resource_name = adj.resource
+        existing = db.query(Constraint).filter(Constraint.resource_type == resource_type, Constraint.resource_id == resource_id, Constraint.day == adj.day, Constraint.time == datetime.strptime(adj.time, "%H:%M").time(), Constraint.is_active == True).first()
+        if existing:
+            existing.constraint_type = adj.new_value.lower()
             db.commit()
-            add_log(db, user_id=1, user_name="admin", action="update_adjustment", details=f"Mise à jour de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
+            log_action(db, 1, "admin", "update_adjustment", f"Updated constraint for {resource_name} on {adj.day} at {adj.time}")
         else:
-            new_constraint = Constraint(
-                resource_type=resource_type,
-                resource_id=resource_id,
-                resource_name=resource_name,
-                day=adjustment.day,
-                time=datetime.strptime(adjustment.time, "%H:%M").time(),
-                constraint_type=adjustment.new_value.lower(),
-                is_active=True
-            )
+            new_constraint = Constraint(resource_type=resource_type, resource_id=resource_id, resource_name=resource_name, day=adj.day, time=datetime.strptime(adj.time, "%H:%M").time(), constraint_type=adj.new_value.lower(), is_active=True)
             db.add(new_constraint)
             db.commit()
-            add_log(db, user_id=1, user_name="admin", action="create_adjustment", details=f"Création de contrainte pour {resource_name} le {adjustment.day} à {adjustment.time}")
+            log_action(db, 1, "admin", "create_adjustment", f"Created constraint for {resource_name} on {adj.day} at {adj.time}")
+    return {"message": "Adjustments applied"}
 
-    return {"message": "Ajustements appliqués avec succès"}
-
-# Nouvel endpoint pour exécuter les migrations
 @app.post("/api/migrate")
 async def run_migration(db: Session = Depends(get_db)):
     try:
-        db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE"))
+        db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE")
         db.commit()
-        return {"message": "Migration effectuée avec succès : colonne last_login ajoutée"}
+        return {"message": "Migration completed: last_login column added"}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la migration : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Migration error: {str(e)}")
 
-# Endpoints existants (non modifiés pour le logging ici pour brevité)
 @app.get("/api/constraints")
 async def get_constraints(db: Session = Depends(get_db)):
     constraints = db.query(Constraint).filter(Constraint.is_active == True).all()
-    return [
-        {
-            "id": c.id,
-            "resource_type": c.resource_type,
-            "resource_id": c.resource_id,
-            "resource_name": c.resource_name,
-            "day": c.day,
-            "time": c.time.strftime("%H:%M"),
-            "constraint_type": c.constraint_type
-        }
-        for c in constraints
-    ]
+    return [{"id": c.id, "resource_type": c.resource_type, "resource_id": c.resource_id, "resource_name": c.resource_name, "day": c.day, "time": c.time.strftime("%H:%M"), "constraint_type": c.constraint_type} for c in constraints]
 
 @app.get("/api/teachers")
 async def get_teachers(db: Session = Depends(get_db)):
@@ -447,13 +381,7 @@ async def get_rooms(db: Session = Depends(get_db)):
     return [{"id": r.id, "name": r.name, "capacity": r.capacity, "equipment": r.equipment} for r in rooms]
 
 @app.get("/api/timetable")
-async def get_timetable(
-    search: Optional[str] = None,
-    group_id: Optional[int] = None,
-    teacher_id: Optional[int] = None,
-    date: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+async def get_timetable(search: str | None = None, group_id: int | None = None, teacher_id: int | None = None, date: str | None = None, db: Session = Depends(get_db)):
     query = db.query(Timetable)
     if group_id:
         query = query.filter(Timetable.group_id == group_id)
@@ -490,49 +418,24 @@ async def get_timetable_dates(db: Session = Depends(get_db)):
     return [d[0].strftime("%Y-%m-%d") for d in dates]
 
 @app.get("/api/timetable/export/{format}")
-async def export_timetable(
-    format: str,
-    group_id: Optional[int] = None,
-    teacher_id: Optional[int] = None,
-    date: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+async def export_timetable(format: str, group_id: int | None = None, teacher_id: int | None = None, date: str | None = None, db: Session = Depends(get_db)):
     timetable = await get_timetable(search=None, group_id=group_id, teacher_id=teacher_id, date=date, db=db)
-    
     if not timetable:
-        raise HTTPException(status_code=404, detail="Aucun emploi du temps disponible pour ces filtres")
-
+        raise HTTPException(status_code=404, detail="No timetable available")
     if format == "csv":
         output = StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Jour", "Heure", "Sujet", "Enseignant", "Salle"])
+        writer.writerow(["Day", "Time", "Subject", "Teacher", "Room"])
         for entry in timetable:
-            writer.writerow([
-                entry["day"],
-                f"{entry['start_time']} - {entry['end_time']}",
-                entry["subject"],
-                entry["teacher_name"],
-                entry["room_name"]
-            ])
+            writer.writerow([entry["day"], f"{entry['start_time']} - {entry['end_time']}", entry["subject"], entry["teacher_name"], entry["room_name"]])
         output.seek(0)
-        return StreamingResponse(
-            iter([output.getvalue()]),
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=timetable.csv"}
-        )
-
+        return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=timetable.csv"})
     elif format == "pdf":
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter)
-        data = [["Jour", "Heure", "Sujet", "Enseignant", "Salle"]]
+        data = [["Day", "Time", "Subject", "Teacher", "Room"]]
         for entry in timetable:
-            data.append([
-                entry["day"],
-                f"{entry['start_time']} - {entry['end_time']}",
-                entry["subject"],
-                entry["teacher_name"],
-                entry["room_name"]
-            ])
+            data.append([entry["day"], f"{entry['start_time']} - {entry['end_time']}", entry["subject"], entry["teacher_name"], entry["room_name"]])
         table = Table(data)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.green),
@@ -547,122 +450,87 @@ async def export_timetable(
             ('FONTSIZE', (0, 1), (-1, -1), 12),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ]))
-        elements = [table]
-        doc.build(elements)
+        doc.build([table])
         buffer.seek(0)
-        return StreamingResponse(
-            buffer,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=timetable.pdf"}
-        )
-
+        return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=timetable.pdf"})
     elif format == "ical":
         cal = Calendar()
         cal.add('prodid', '-//Fareno University//Timetable//EN')
         cal.add('version', '2.0')
-
         for entry in timetable:
             event = Event()
             event.add('summary', f"{entry['subject']} - {entry['teacher_name']}")
             event.add('location', entry['room_name'])
-
             date = datetime.strptime(entry['date'], "%Y-%m-%d")
             day_map = {"lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3, "vendredi": 4}
             days_to_add = day_map[entry['day'].lower()]
             event_date = date + timedelta(days=days_to_add)
-
             start_time = datetime.strptime(entry['start_time'], "%H:%M").time()
             end_time = datetime.strptime(entry['end_time'], "%H:%M").time()
             event.add('dtstart', datetime.combine(event_date, start_time))
             event.add('dtend', datetime.combine(event_date, end_time))
             event.add('dtstamp', datetime.now())
             cal.add_component(event)
-
         buffer = BytesIO()
         buffer.write(cal.to_ical())
         buffer.seek(0)
-        return StreamingResponse(
-            buffer,
-            media_type="text/calendar",
-            headers={"Content-Disposition": "attachment; filename=timetable.ics"}
-        )
-
-    raise HTTPException(status_code=400, detail="Format non supporté")
+        return StreamingResponse(buffer, media_type="text/calendar", headers={"Content-Disposition": "attachment; filename=timetable.ics"})
+    raise HTTPException(status_code=400, detail="Unsupported format")
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db)):
-    timetables_count = db.query(Timetable).count()
-    active_users = db.query(User).filter(User.last_login >= datetime.now() - timedelta(days=30)).count()
-    conflicts_resolved = db.query(Constraint).filter(Constraint.constraint_type == "resolved", Constraint.is_active == True).count()
     return {
-        "timetables_generated": timetables_count,
-        "active_users": active_users,
-        "conflicts_resolved": conflicts_resolved
+        "timetables_generated": db.query(Timetable).count(),
+        "active_users": db.query(User).filter(User.last_login >= datetime.now() - timedelta(days=30)).count(),
+        "conflicts_resolved": db.query(Constraint).filter(Constraint.constraint_type == "resolved", Constraint.is_active == True).count()
     }
 
-# Initialisation de la base de données avec un utilisateur admin et données de test
+# Initialize database with test data
 def init_db():
     db = SessionLocal()
     try:
-        user_count = db.query(User).count()
-        if user_count == 0:
-            admin = User(
-                name="admin",
-                email="admin@gmail.com",
-                password=pwd_context.hash("Fareno12"),
-                role="admin"
-            )
+        if not db.query(User).count():
+            admin = User(name="admin", email="admin@gmail.com", password=pwd_context.hash("Fareno12"), role="admin")
             db.add(admin)
             db.commit()
-            print("Utilisateur admin créé.")
-
-        if db.query(Teacher).count() == 0:
+        if not db.query(Teacher).count():
             teachers = [
                 Teacher(name="M. Dupont", email="dupont@email.com", subjects="Mathématiques", availability="Lundi 08:00-12:00"),
                 Teacher(name="Mme Lefèvre", email="lefevre@email.com", subjects="Physique", availability="Mardi 14:00-18:00")
             ]
             db.add_all(teachers)
             db.commit()
-            print("Enseignants test ajoutés.")
-
-        if db.query(Group).count() == 0:
+        if not db.query(Group).count():
             groups = [
                 Group(name="Groupe A", student_count=30, subjects="Mathématiques, Physique"),
                 Group(name="Groupe B", student_count=25, subjects="Chimie, Biologie")
             ]
             db.add_all(groups)
             db.commit()
-            print("Groupes test ajoutés.")
-
-        if db.query(Room).count() == 0:
+        if not db.query(Room).count():
             rooms = [
                 Room(name="Salle 101", capacity=40, equipment="Projecteur, Tableau"),
                 Room(name="Salle 102", capacity=30, equipment="Ordinateurs")
             ]
             db.add_all(rooms)
             db.commit()
-            print("Salles test ajoutées.")
-
-        if db.query(Constraint).count() == 0:
+        if not db.query(Constraint).count():
             constraints = [
                 Constraint(resource_type="teacher", resource_id=1, resource_name="M. Dupont", day="lundi", time=time(8, 0), constraint_type="unavailable"),
                 Constraint(resource_type="teacher", resource_id=2, resource_name="Mme Lefèvre", day="mardi", time=time(14, 0), constraint_type="preference")
             ]
             db.add_all(constraints)
             db.commit()
-            print("Contraintes test ajoutées.")
     finally:
         db.close()
 
-# Créer les tables si elles n'existent pas, avec gestion des erreurs
+# Create tables and initialize data
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
-    logger.error(f"Erreur lors de la création des tables : {str(e)}")
-
-# Initialiser les données uniquement si l'environnement est en mode développement/test
+    logger.error(f"Table creation error: {str(e)}")
 if os.getenv("ENVIRONMENT", "development") == "development":
     try:
         init_db()
     except Exception as e:
-        logger.error(f"Erreur lors de l'initialisation des données : {str(e)}")
+        logger.error(f"Data initialization error: {str(e)}")
