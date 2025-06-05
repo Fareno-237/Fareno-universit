@@ -23,8 +23,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Database connection
-DATABASE_URL = "postgresql://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abibnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db"
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = "postgresql+psycopg2://fareno_university_db_user:fVBF3mIKs11vdYUYyXfRPaWk2Vu5b9SY@dpg-d1022abibnbc738ed7g0-a.oregon-postgres.render.com/fareno_university_db?sslmode=require"
+engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"})
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"])
