@@ -8,3 +8,4 @@ fastapi
 uvicorn
 passlib[bcrypt]
 psycopg2-binary
+sqlalchemy
